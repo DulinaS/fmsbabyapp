@@ -10,73 +10,63 @@ class GrowthMilestonePage extends StatefulWidget {
 }
 
 class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
-  int selectedDay = 164;
+  int selectedDay = 4;
   final ScrollController _daysScrollController = ScrollController();
   final TextEditingController _weightController = TextEditingController();
 
-  // Sample data - in a real app, this would come from a database or API
   final Map<int, Map<String, String>> dayData = {
-    161: {
+    1: {
       'weight': '95 grams',
       'height': '45 cm',
       'circumference': '40cm',
       'gender': 'Male'
     },
-    162: {
+    2: {
       'weight': '100 grams',
       'height': '47 cm',
       'circumference': '41cm',
       'gender': 'Male'
     },
-    163: {
+    3: {
       'weight': '105 grams',
       'height': '48 cm',
       'circumference': '42cm',
       'gender': 'Male'
     },
-    164: {
+    4: {
       'weight': '110 grams',
       'height': '50 cm',
       'circumference': '44cm',
       'gender': 'Male'
     },
-    165: {
+    5: {
       'weight': '115 grams',
       'height': '51 cm',
       'circumference': '45cm',
       'gender': 'Male'
     },
-    166: {
+    6: {
       'weight': '120 grams',
       'height': '52 cm',
       'circumference': '46cm',
       'gender': 'Male'
     },
-    167: {
+    7: {
       'weight': '125 grams',
       'height': '53 cm',
       'circumference': '47cm',
       'gender': 'Male'
     },
-    168: {
-      'weight': '130 grams',
-      'height': '54 cm',
-      'circumference': '48cm',
-      'gender': 'Male'
-    },
-    // More data can be added here
   };
 
-  // Map to store numeric weight values for the chart
   Map<int, double> weightData = {
-    161: 95,
-    162: 100,
-    163: 105,
-    164: 110,
-    165: 115,
-    166: 120,
-    167: 125,
-    168: 130,
+    1: 95,
+    2: 100,
+    3: 105,
+    4: 110,
+    5: 115,
+    6: 120,
+    7: 125,
   };
 
   @override
@@ -98,7 +88,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
 
   void scrollToSelectedDay() {
     // Calculate position to scroll to
-    final index = selectedDay - 161; // Adjust for starting day
+    final index = selectedDay - 1; // Adjust for starting day
     final itemWidth = 50.0; // Width of day item + padding
     final screenWidth = MediaQuery.of(context).size.width;
     final offset = index * itemWidth - (screenWidth / 2) + (itemWidth / 2);
