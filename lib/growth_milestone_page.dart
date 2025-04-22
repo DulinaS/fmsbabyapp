@@ -87,9 +87,8 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
   }
 
   void scrollToSelectedDay() {
-    // Calculate position to scroll to
-    final index = selectedDay - 1; // Adjust for starting day
-    final itemWidth = 50.0; // Width of day item + padding
+    final index = selectedDay - 1;
+    final itemWidth = 50.0;
     final screenWidth = MediaQuery.of(context).size.width;
     final offset = index * itemWidth - (screenWidth / 2) + (itemWidth / 2);
 
