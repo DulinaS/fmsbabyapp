@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "607407824489",
+    "project_id": "betterme-18761",
+    "storage_bucket": "betterme-18761.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:607407824489:android:a4239d96bba8c3aa4e4cf8",
+        "android_client_info": {
+          "package_name": "com.example.betterme"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrscn-JRZ9tIQ5JY5g1omRg1XyRFDdq88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:607407824489:android:f81242e039c9eb354e4cf8",
+        "android_client_info": {
+          "package_name": "com.example.fmsbabyapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrscn-JRZ9tIQ5JY5g1omRg1XyRFDdq88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

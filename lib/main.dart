@@ -1,9 +1,16 @@
 
 import 'package:flutter/material.dart';
+import 'package:fmsbabyapp/login_page.dart';
 import 'growth_milestone_page.dart';
 import 'package:fmsbabyapp/registration_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+);
   runApp(const MyApp());
 }
 
@@ -23,7 +30,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Nunito',
       ),
-      home: const RegistrationScreen(),
+      home: const LoginPage(),
     );
   }
 }
