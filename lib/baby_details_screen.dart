@@ -661,7 +661,7 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
   Color get primaryColor =>
       isBoySelected ? const Color(0xFF1873EA) : const Color(0xFFF50ED6);
 
-  // Save baby details to Firebase
+  /* // Save baby details to Firebase
   Future<void> _saveBabyDetails() async {
     // Validate required fields
     if (_nameController.text.isEmpty || selectedDate == null) {
@@ -739,8 +739,99 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
         });
       }
     }
+  } */
+  // Save baby details to Firebase
+  Future<void> _saveBabyDetails() async {
+    // Validate required fields
+    if (_nameController.text.isEmpty || selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please fill all required fields"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Parse optional numeric fields
+      double? weight =
+          _weightController.text.isNotEmpty
+              ? double.tryParse(_weightController.text)
+              : null;
+
+      double? height =
+          _heightController.text.isNotEmpty
+              ? double.tryParse(_heightController.text)
+              : null;
+
+      double? headCircumference =
+          _circumferenceController.text.isNotEmpty
+              ? double.tryParse(_circumferenceController.text)
+              : null;
+
+      // Add child to Firebase
+      String childId = await _childService.addChild(
+        name: _nameController.text,
+        dateOfBirth: selectedDate!,
+        gender: isBoySelected ? 'boy' : 'girl',
+        weight: weight,
+        height: height,
+        headCircumference: headCircumference,
+      );
+
+      // If weight is provided, automatically add it as day 1 data
+      if (weight != null) {
+        await _childService.addDailyWeight(
+          childId,
+          dayNumber: 1,
+          date: selectedDate!, // Birth date is day 1
+          weight: weight,
+        );
+      }
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Baby added successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      // Navigate to home screen with the new child selected
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(initialChildId: childId),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error adding baby: ${e.toString()}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
-  
+
   // Skip adding baby details and go to home screen
   void _skipBabyDetails() {
     Navigator.pushReplacement(
@@ -770,7 +861,7 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
                         Navigator.pop(context);
                       },
                     ),
-                    
+
                     // Skip Button
                     TextButton(
                       onPressed: _skipBabyDetails,
