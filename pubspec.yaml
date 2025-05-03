@@ -39,6 +39,7 @@ dependencies:
   firebase_auth: ^5.5.2
   cloud_firestore: ^5.6.6
   intl: ^0.20.2
+  google_sign_in: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +79,7 @@ flutter:
      - assets/images/profile.png
      - assets/images/vaccination.png
      - assets/images/vaccine_icon.png
+     - assets/images/google_logo.png
      
 
   # An image asset can refer to one or more resolution-specific "variants", see
