@@ -38,6 +38,7 @@ dependencies:
   firebase_core: ^3.13.0
   firebase_auth: ^5.5.2
   cloud_firestore: ^5.6.6
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,14 @@ flutter:
      - assets/images/face.png
      - assets/images/Icon.png
      - assets/images/start_logo.jpeg
+     - assets/images/article.png
+     - assets/images/first_aid.png
+     - assets/images/Hospital.png
+     - assets/images/Milestones.png
+     - assets/images/nutrition.png 
+     - assets/images/profile.png
+     - assets/images/vaccination.png
+     - assets/images/vaccine_icon.png
      
 
   # An image asset can refer to one or more resolution-specific "variants", see
