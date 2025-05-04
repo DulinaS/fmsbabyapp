@@ -5,8 +5,8 @@ class Child {
   final String name;
   final DateTime dateOfBirth;
   final String gender;
-  final double? weight;           // Birth weight in grams
-  final double? height;           // Birth height in cm
+  final double? weight; // Birth weight in grams
+  final double? height; // Birth height in cm
   final double? headCircumference; // Head circumference in cm
   final double? currentWeight;
   final double? currentHeight;
@@ -30,9 +30,7 @@ class Child {
   // Calculate age in months
   int get ageInMonths {
     final now = DateTime.now();
-    return ((now.year - dateOfBirth.year) * 12) + 
-           now.month - 
-           dateOfBirth.month;
+    return ((now.year - dateOfBirth.year) * 12) + now.month - dateOfBirth.month;
   }
 
   // Format age for display (e.g., "2 years 3 months" or "5 months")
@@ -40,19 +38,19 @@ class Child {
     final months = ageInMonths;
     final years = months ~/ 12;
     final remainingMonths = months % 12;
-    
+
     if (years == 0) {
       return '$months ${months == 1 ? 'month' : 'months'}';
     } else {
       return '$years ${years == 1 ? 'year' : 'years'} ' +
-             '$remainingMonths ${remainingMonths == 1 ? 'month' : 'months'}';
+          '$remainingMonths ${remainingMonths == 1 ? 'month' : 'months'}';
     }
   }
 
   // Create Child object from Firestore document
   factory Child.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     return Child(
       id: doc.id,
       name: data['name'] ?? '',
@@ -63,12 +61,14 @@ class Child {
       headCircumference: data['headCircumference']?.toDouble(),
       currentWeight: data['currentWeight']?.toDouble(),
       currentHeight: data['currentHeight']?.toDouble(),
-      createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate() 
-          : DateTime.now(),
-      updatedAt: data['updatedAt'] != null 
-          ? (data['updatedAt'] as Timestamp).toDate() 
-          : null,
+      createdAt:
+          data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate()
+              : DateTime.now(),
+      updatedAt:
+          data['updatedAt'] != null
+              ? (data['updatedAt'] as Timestamp).toDate()
+              : null,
     );
   }
 
@@ -81,11 +81,21 @@ class Child {
       'weight': weight,
       'height': height,
       'headCircumference': headCircumference,
-      'currentWeight': currentWeight ?? weight, // Initially set current to birth weight if available
-      'currentHeight': currentHeight ?? height, // Initially set current to birth height if available
+      'currentWeight':
+          currentWeight ??
+          weight, // Initially set current to birth weight if available
+      'currentHeight':
+          currentHeight ??
+          height, // Initially set current to birth height if available
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  int get ageInWeeks {
+    final currentDate = DateTime.now();
+    final difference = currentDate.difference(dateOfBirth).inDays;
+    return (difference / 7).ceil();
   }
 }
 
@@ -112,7 +122,7 @@ class Measurement {
   // Create Measurement object from Firestore document
   factory Measurement.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     return Measurement(
       id: doc.id,
       date: (data['date'] as Timestamp).toDate(),
@@ -120,9 +130,10 @@ class Measurement {
       height: data['height']?.toDouble() ?? 0.0,
       headCircumference: data['headCircumference']?.toDouble(),
       notes: data['notes'],
-      createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate() 
-          : DateTime.now(),
+      createdAt:
+          data['createdAt'] != null
+              ? (data['createdAt'] as Timestamp).toDate()
+              : DateTime.now(),
     );
   }
 
