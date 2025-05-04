@@ -152,6 +152,7 @@ class ChildService {
 } */
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:fmsbabyapp/vaccination_service.dart';
 import 'child_model.dart';
 
 class ChildService {
@@ -375,5 +376,73 @@ class ChildService {
       debugPrint('Error getting last updated day: $e');
       return 0;
     }
+  }
+
+Future<void> initializeVaccinations(String childId) async {
+    try {
+      // Create a VaccinationService instance
+      final vaccinationService = VaccinationService(_userId);
+      
+      // Get the child to access their birth date
+      final child = await getChild(childId);
+      if (child == null) {
+        throw Exception('Child not found');
+      }
+      
+      // Initialize vaccinations based on birth date
+      await vaccinationService.initializeVaccinations(childId, child.dateOfBirth);
+    } catch (e) {
+      debugPrint('Error initializing vaccinations: $e');
+      throw Exception('Failed to initialize vaccinations');
+    }
+  }
+
+  // Update all vaccination due dates when child's birth date is updated
+  Future<void> updateVaccinationScheduleAfterBirthDateChange(
+    String childId, 
+    DateTime newBirthDate
+  ) async {
+    try {
+      // Create a VaccinationService instance
+      final vaccinationService = VaccinationService(_userId);
+      
+      // Update vaccination schedule based on new birth date
+      await vaccinationService.updateVaccinationSchedule(childId, newBirthDate);
+    } catch (e) {
+      debugPrint('Error updating vaccination schedule: $e');
+      throw Exception('Failed to update vaccination schedule');
+    }
+  }
+
+  // Add a vaccination record to child's profile
+  Future<void> recordVaccination(
+    String childId,
+    String vaccineName,
+    DateTime dateGiven,
+  ) async {
+    try {
+      // Reference to the vaccinations collection
+      final vaccinationsCollection = 
+          _childrenCollection.doc(childId).collection('vaccinationRecords');
+          
+      // Add vaccination record
+      await vaccinationsCollection.add({
+        'name': vaccineName,
+        'dateGiven': Timestamp.fromDate(dateGiven),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error recording vaccination: $e');
+      throw Exception('Failed to record vaccination');
+    }
+  }
+
+  // Get all vaccination records for a child
+  Stream<QuerySnapshot> getVaccinationRecords(String childId) {
+    return _childrenCollection
+        .doc(childId)
+        .collection('vaccinationRecords')
+        .orderBy('dateGiven', descending: true)
+        .snapshots();
   }
 }

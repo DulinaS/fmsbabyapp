@@ -333,10 +333,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'child_service.dart';
 import 'child_model.dart';
-import 'vaccination.dart';
+import 'vaccination_page.dart';
 import 'growth_milestone_page.dart';
 import 'nutrition.dart';
 import 'baby_details_screen.dart';
+import 'placeholder_page.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? initialChildId; // Optional starting child
@@ -354,11 +355,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   Child? _selectedChild;
 
+  // Updated feature list to use only childId without child object
   final List<Map<String, dynamic>> features = [
     {
       'label': 'Vaccinations',
       'image': 'assets/images/vaccination.png',
-      'getPage': (String childId) => VaccinationPage(),
+      'getPage': (String childId) => VaccinationPage(childId: childId),
     },
     {
       'label': 'Growth',
@@ -368,12 +370,12 @@ class _HomeScreenState extends State<HomeScreen> {
     {
       'label': 'Safety & First Aid',
       'image': 'assets/images/first_aid.png',
-      'getPage': (String childId) => VaccinationPage(),
+      'getPage': (String childId) => PlaceholderPage(title: 'Safety & First Aid'),
     },
     {
       'label': 'Hospitals',
       'image': 'assets/images/Hospital.png',
-      'getPage': (String childId) => VaccinationPage(),
+      'getPage': (String childId) => PlaceholderPage(title: 'Hospitals'),
     },
     {
       'label': 'Nutrition & Feeding',
@@ -383,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
     {
       'label': 'Your New Born',
       'image': 'assets/images/article.png',
-      'getPage': (String childId) => VaccinationPage(),
+      'getPage': (String childId) => PlaceholderPage(title: 'Your New Born'),
     },
   ];
 
@@ -501,6 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Updated to use only childId and not child object
   Widget buildFeatureBox(
     BuildContext context,
     String label, {

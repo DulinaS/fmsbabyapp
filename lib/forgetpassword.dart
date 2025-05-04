@@ -199,26 +199,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  /*   Future<void> _sendPasswordResetEmail() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: emailController.text.trim(),
-      );
-      // Show success dialog
-      _showDialog('Success! Check your inbox for the reset link.', true);
-    } catch (e) {
-      // Show error dialog
-      _showDialog('Error: ${e.toString()}', false);
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  } */
   Future<void> _sendPasswordResetEmail() async {
     // Validate email format first
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');

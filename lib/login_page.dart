@@ -386,8 +386,8 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Image.asset(
                         'assets/images/google_logo.png',
-                        height: 24,
-                        width: 24,
+                        height: 20,
+                        width: 20,
                       ),
                       const SizedBox(width: 12),
                       const Text(

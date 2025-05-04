@@ -696,7 +696,7 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
               : null;
 
       // Add child to Firebase
-      await _childService.addChild(
+      String childId = await _childService.addChild(
         name: _nameController.text,
         dateOfBirth: selectedDate!,
         gender: isBoySelected ? 'boy' : 'girl',
@@ -704,6 +704,16 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
         height: height,
         headCircumference: headCircumference,
       );
+
+      // If weight is provided, automatically add it as day 1 data
+      if (weight != null) {
+        await _childService.addDailyWeight(
+          childId,
+          dayNumber: 1,
+          date: selectedDate!, // Birth date is day 1
+          weight: weight,
+        );
+      }
 
       // Show success message
       if (mounted) {
@@ -715,11 +725,13 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
         );
       }
 
-      // Navigate to next screen if specified
+      // Navigate to home screen with the new child selected
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomeScreen()),
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(initialChildId: childId),
+          ),
         );
       }
     } catch (e) {
@@ -793,6 +805,9 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
           weight: weight,
         );
       }
+
+      // Initialize vaccinations for the new child
+      await _childService.initializeVaccinations(childId);
 
       // Show success message
       if (mounted) {
