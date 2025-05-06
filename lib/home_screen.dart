@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fmsbabyapp/login_page.dart';
 import 'package:intl/intl.dart';
 import 'child_service.dart';
 import 'child_model.dart';
@@ -126,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await FirebaseAuth.instance.signOut();
       // Navigate to login screen after logout
-      Navigator.of(context).pushReplacementNamed('/login');
+      Navigator.push(context, MaterialPageRoute(builder: (context) => LoginPage()));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error signing out: ${e.toString()}')),
