@@ -2783,40 +2783,46 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         });
       }
 
-      // Find the most recent date to determine current weight
-      DateTime mostRecentDate = normalizedSelectedDate;
-      double mostRecentWeight = weightValue;
+      // ----- MODIFIED LOGIC FOR CURRENT WEIGHT UPDATE -----
 
-      // Check all entries to find the most recent date
+      // Find the entry with the latest selected date (not creation date)
+      // This ensures we use the date the user picked, not when they entered it
+      DateTime latestDate = DateTime(1900); // Start with a very old date
+      double latestDateWeight = 0;
+
+      // Check all days to find the one with the latest selected date
       for (final entry in dayToDateMap.entries) {
-        final entryDate = normalizeDate(entry.value);
-        if (entryDate.isAfter(mostRecentDate)) {
-          mostRecentDate = entryDate;
-          final entryDay = entry.key;
-          if (weightData.containsKey(entryDay)) {
-            mostRecentWeight = weightData[entryDay]!;
+        final dayNum = entry.key;
+        final entryDate = entry.value;
+
+        // If this entry has a date after our current latest
+        if (entryDate.isAfter(latestDate)) {
+          latestDate = entryDate;
+
+          // Get the weight for this day
+          if (weightData.containsKey(dayNum)) {
+            latestDateWeight = weightData[dayNum]!;
           }
-        } else if (entryDate.isAtSameMomentAs(mostRecentDate) &&
-            entry.key == dayNumber) {
-          // This is our current entry and it's the most recent
-          mostRecentWeight = weightValue;
         }
       }
 
-      // Update current weight if this date is the most recent
-      if (normalizedSelectedDate.isAtSameMomentAs(mostRecentDate)) {
-        print(
-          "Updating current weight to $mostRecentWeight from date $mostRecentDate",
-        );
-        await _childService.updateChild(widget.childId, {
-          'currentWeight': mostRecentWeight,
-        });
-      } else {
-        // Debug info
-        print(
-          "Not updating current weight - most recent date is $mostRecentDate (selected: $normalizedSelectedDate)",
-        );
+      // If our current selected date is the latest or same as latest,
+      // use the current weight we're entering
+      if (normalizedSelectedDate.isAfter(latestDate) ||
+          normalizedSelectedDate.isAtSameMomentAs(latestDate)) {
+        latestDate = normalizedSelectedDate;
+        latestDateWeight = weightValue;
       }
+
+      // Update current weight to weight from entry with latest selected date
+      print(
+        "Updating current weight to $latestDateWeight from date $latestDate",
+      );
+      await _childService.updateChild(widget.childId, {
+        'currentWeight': latestDateWeight,
+      });
+
+      // ----- END OF MODIFIED LOGIC -----
 
       // Update our tracking
       if (!isUpdate) {
