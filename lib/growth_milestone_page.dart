@@ -89,7 +89,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     super.dispose();
   }
 
-  Future<void> _loadWHOStandardLines() async {
+  /* Future<void> _loadWHOStandardLines() async {
     if (_child == null) return;
 
     try {
@@ -145,7 +145,68 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       }
     }
   }
+ */
+  Future<void> _loadWHOStandardLines() async {
+    if (_child == null) return;
 
+    try {
+      final growthStandardService = GrowthStandardService();
+
+      // Determine time range for chart - extend to at least 6 months
+      int maxDays = 180; // Default to 6 months minimum
+
+      if (dayToDateMap.isNotEmpty) {
+        // Find latest date in data
+        final latestDate = dayToDateMap.values.reduce(
+          (a, b) => a.isAfter(b) ? a : b,
+        );
+
+        // Calculate days from birth to latest date plus 60 days buffer
+        int daysFromBirthToLatest =
+            latestDate.difference(_child!.dateOfBirth).inDays + 60;
+
+        // Use the larger of 180 days or actual data range
+        maxDays = daysFromBirthToLatest > 180 ? daysFromBirthToLatest : 180;
+      }
+
+      // Round to next month
+      maxDays = (maxDays ~/ 30 + 1) * 30;
+
+      // Get standard lines data
+      final standardLinesData = await growthStandardService
+          .getStandardLinesData(
+            _child!.gender,
+            _child!.dateOfBirth,
+            maxDays: maxDays,
+          );
+
+      // Convert to FlSpot format - ALWAYS in kg
+      Map<String, List<FlSpot>> lines = {};
+      standardLinesData.forEach((key, pointList) {
+        lines[key] =
+            pointList.map((point) {
+              // Convert to FlSpot with x as days since birth and y as weight
+              // Always convert weight to kg for the chart
+              double yValue = (point['y'] as double) / 1000;
+              return FlSpot(point['x'] as double, yValue);
+            }).toList();
+      });
+
+      if (mounted) {
+        setState(() {
+          _whoStandardLines = lines;
+          _isLoadingStandards = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading WHO standards: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingStandards = false;
+        });
+      }
+    }
+  }
   /* Widget _buildChartLegend() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -2128,7 +2189,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   } */
 
-  Widget _buildGrowthChart() {
+  /* Widget _buildGrowthChart() {
     if (weightData.isEmpty) {
       return Container(
         width: double.infinity,
@@ -2620,6 +2681,648 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
 
                                     return LineTooltipItem(
                                       'dateStr:$weightText\n${category}',
+                                      TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    );
+                                  } else {
+                                    // Fallback
+                                    return LineTooltipItem(
+                                      'Unknown point',
+                                      TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    );
+                                  }
+                                }).toList();
+                              },
+                            ),
+                            touchCallback: (
+                              FlTouchEvent event,
+                              LineTouchResponse? response,
+                            ) {
+                              // Optional: Add callback for touch events
+                            },
+                            handleBuiltInTouches: true,
+                          ),
+                          lineBarsData: [
+                            // WHO standard lines (display below actual data)
+                            if (_whoStandardLines.containsKey('minus3SD'))
+                              LineChartBarData(
+                                spots: _whoStandardLines['minus3SD']!,
+                                isCurved: true,
+                                color: Colors.red.withOpacity(0.7),
+                                barWidth: 1,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(show: false),
+                                dashArray: [5, 5], // Dashed line
+                                belowBarData: BarAreaData(show: false),
+                              ),
+                            if (_whoStandardLines.containsKey('minus2SD'))
+                              LineChartBarData(
+                                spots: _whoStandardLines['minus2SD']!,
+                                isCurved: true,
+                                color: Colors.orange.withOpacity(0.7),
+                                barWidth: 1,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(show: false),
+                                dashArray: [5, 5], // Dashed line
+                                belowBarData: BarAreaData(show: false),
+                              ),
+                            if (_whoStandardLines.containsKey('median'))
+                              LineChartBarData(
+                                spots: _whoStandardLines['median']!,
+                                isCurved: true,
+                                color: Colors.green,
+                                barWidth: 1.5,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(show: false),
+                                belowBarData: BarAreaData(show: false),
+                              ),
+                            if (_whoStandardLines.containsKey('plus2SD'))
+                              LineChartBarData(
+                                spots: _whoStandardLines['plus2SD']!,
+                                isCurved: true,
+                                color: Colors.orange.withOpacity(0.7),
+                                barWidth: 1,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(show: false),
+                                dashArray: [5, 5], // Dashed line
+                                belowBarData: BarAreaData(show: false),
+                              ),
+                            if (_whoStandardLines.containsKey('plus3SD'))
+                              LineChartBarData(
+                                spots: _whoStandardLines['plus3SD']!,
+                                isCurved: true,
+                                color: Colors.red.withOpacity(0.7),
+                                barWidth: 1,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(show: false),
+                                dashArray: [5, 5], // Dashed line
+                                belowBarData: BarAreaData(show: false),
+                              ),
+
+                            // Main weight data line (display on top)
+                            LineChartBarData(
+                              spots: spots,
+                              isCurved: true,
+                              color: const Color(0xFF1873EA),
+                              barWidth: 3,
+                              isStrokeCapRound: true,
+                              dotData: FlDotData(
+                                show: true,
+                                getDotPainter: (spot, percent, barData, index) {
+                                  // Use color from weight category data if available
+                                  Color dotColor =
+                                      index < spotColors.length
+                                          ? spotColors[index]
+                                          : const Color(0xFF1873EA);
+
+                                  return FlDotCirclePainter(
+                                    radius: 5,
+                                    color: dotColor,
+                                    strokeWidth: 2,
+                                    strokeColor: Colors.white,
+                                  );
+                                },
+                              ),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                color: const Color(0xFF1873EA).withOpacity(0.1),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+            ),
+            // Loading indicator for WHO standards if applicable
+            if (_isLoadingStandards && _whoStandardLines.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF1873EA),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      "Loading WHO standards...",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  } */
+
+  Widget _buildGrowthChart() {
+    if (weightData.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 400, // Height for empty state
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          shadows: [
+            BoxShadow(
+              color: Color(0x3F000000),
+              blurRadius: 8,
+              offset: Offset(2, 2),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            'No weight data available yet',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Sort entries by date for chronological chart
+    List<MapEntry<int, double>> sortedEntries = [];
+
+    for (var entry in weightData.entries) {
+      // Only include entries that have dates
+      if (dayToDateMap.containsKey(entry.key)) {
+        sortedEntries.add(entry);
+      }
+    }
+
+    // Sort by date
+    sortedEntries.sort((a, b) {
+      final dateA = dayToDateMap[a.key]!;
+      final dateB = dayToDateMap[b.key]!;
+      return dateA.compareTo(dateB);
+    });
+
+    // Calculate days since birth for x-axis and prepare spots data
+    List<FlSpot> spots = [];
+    List<Color> spotColors = [];
+
+    for (var entry in sortedEntries) {
+      final dayNumber = entry.key;
+      final date = dayToDateMap[dayNumber]!;
+      final birthDate = _child!.dateOfBirth;
+      final daysSinceBirth = date.difference(birthDate).inDays;
+
+      // ALWAYS convert weight to kg for the chart (regardless of display unit)
+      final weightValue = entry.value / 1000;
+
+      spots.add(FlSpot(daysSinceBirth.toDouble(), weightValue));
+
+      // Get color for this point based on weight category
+      Color spotColor;
+      if (dayData.containsKey(dayNumber) &&
+          dayData[dayNumber]!.containsKey('color')) {
+        spotColor = hexToColor(dayData[dayNumber]!['color']);
+      } else {
+        spotColor = const Color(0xFF1873EA); // Default blue
+      }
+      spotColors.add(spotColor);
+    }
+
+    // Get min and max values for scaling
+    if (spots.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 400, // Height for empty state
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          shadows: [
+            BoxShadow(
+              color: Color(0x3F000000),
+              blurRadius: 8,
+              offset: Offset(2, 2),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            'No weight data with dates available',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final minX = spots.map((e) => e.x).reduce((a, b) => a < b ? a : b);
+    final maxX = spots.map((e) => e.x).reduce((a, b) => a > b ? a : b);
+    final minY = spots.map((e) => e.y).reduce((a, b) => a < b ? a : b);
+    final maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+
+    // Get min/max Y from WHO standards as well if available
+    double finalMinY = minY;
+    double finalMaxY = maxY;
+
+    if (_whoStandardLines.isNotEmpty) {
+      for (var line in _whoStandardLines.values) {
+        if (line.isNotEmpty) {
+          // Filter standard lines to only include the range we're displaying plus a buffer
+          var filteredLine =
+              line
+                  .where(
+                    (spot) => spot.x >= (minX - 30) && spot.x <= (maxX + 60),
+                  )
+                  .toList();
+
+          if (filteredLine.isNotEmpty) {
+            final lineMinY = filteredLine
+                .map((e) => e.y)
+                .reduce((a, b) => a < b ? a : b);
+            final lineMaxY = filteredLine
+                .map((e) => e.y)
+                .reduce((a, b) => a > b ? a : b);
+
+            finalMinY = finalMinY < lineMinY ? finalMinY : lineMinY;
+            finalMaxY = finalMaxY > lineMaxY ? finalMaxY : lineMaxY;
+          }
+        }
+      }
+    }
+
+    // Calculate buffer to ensure lines stay within the chart (% of total range)
+    double yRange = finalMaxY - finalMinY;
+    double yBuffer = yRange * 0.15; // 15% buffer
+
+    // Apply buffer to min/max Y, always in kg units
+    finalMinY = (finalMinY - yBuffer).floorToDouble();
+    finalMaxY = (finalMaxY + yBuffer).ceilToDouble();
+
+    // Ensure minimum range to prevent squishing when data points are close together
+    if (finalMaxY - finalMinY < 1.0) {
+      double midpoint = (finalMaxY + finalMinY) / 2;
+      finalMinY = midpoint - 0.5;
+      finalMaxY = midpoint + 0.5;
+    }
+
+    // Force minimum value to start from zero if close enough
+    if (finalMinY > 0 && finalMinY < 1.0) {
+      finalMinY = 0;
+    }
+
+    // Load WHO standard lines if not already loaded
+    if (_whoStandardLines.isEmpty && !_isLoadingStandards && _child != null) {
+      _isLoadingStandards = true;
+      _loadWHOStandardLines();
+    }
+
+    return Container(
+      width: double.infinity,
+      height: 400, // Increased total card height
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        shadows: [
+          BoxShadow(
+            color: Color(0x3F000000),
+            blurRadius: 8,
+            offset: Offset(2, 2),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8.0, 16.0, 16.0, 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Weight Progress',
+                  style: TextStyle(
+                    color: const Color(0xFF1873EA),
+                    fontSize: 16,
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: Color(0xFF1873EA),
+                      ),
+                      onPressed: () => _showWHOStandardsInfo(context),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Weight (kg)', // Always display in kg
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            // Add legend for the chart - adjust to match the UI in the image
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12.0,
+                runSpacing: 8.0,
+                children: [
+                  _buildLegendItem(
+                    'Your Baby',
+                    const Color(0xFF1873EA),
+                    isLine: true,
+                    width: 2.5,
+                  ),
+                  _buildLegendItem(
+                    'WHO Median',
+                    Colors.green,
+                    isLine: true,
+                    width: 1.5,
+                  ),
+                  _buildLegendItem(
+                    'Normal',
+                    Colors.orange.withOpacity(0.7),
+                    isDashed: true,
+                  ),
+                  _buildLegendItem(
+                    'Extreme',
+                    Colors.red.withOpacity(0.7),
+                    isDashed: true,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 10),
+            Expanded(
+              child:
+                  _isLoadingStandards && spots.isEmpty
+                      ? Center(child: CircularProgressIndicator())
+                      : LineChart(
+                        LineChartData(
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: true,
+                            horizontalInterval:
+                                1.0, // Always in kg with proper spacing
+                            verticalInterval: 30, // Monthly intervals
+                            getDrawingHorizontalLine: (value) {
+                              return FlLine(
+                                color: Colors.grey.shade300,
+                                strokeWidth: 1,
+                              );
+                            },
+                            getDrawingVerticalLine: (value) {
+                              return FlLine(
+                                color: Colors.grey.shade300,
+                                strokeWidth: 1,
+                              );
+                            },
+                          ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize:
+                                    44, // Increased for two-line display
+                                getTitlesWidget: (value, meta) {
+                                  // Calculate date for this x value (days since birth)
+                                  if (value < 0)
+                                    return const SizedBox(); // Don't show negative values
+                                  final birthDate = _child!.dateOfBirth;
+                                  final date = birthDate.add(
+                                    Duration(days: value.toInt()),
+                                  );
+
+                                  // Format date in two lines
+                                  final month = DateFormat('MMM').format(date);
+                                  final day = DateFormat('d').format(date);
+
+                                  return SideTitleWidget(
+                                    angle: 0,
+                                    space: 8,
+                                    meta: meta,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          day,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 9,
+                                          ),
+                                        ),
+                                        Text(
+                                          month,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 9,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                interval: 30, // Monthly intervals
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  if (value < 0)
+                                    return const SizedBox(); // Don't show negative values
+
+                                  // Only show integer values (whole numbers) for kg
+                                  if (value.round() != value)
+                                    return const SizedBox();
+
+                                  // Format with appropriate precision based on unit
+                                  String valueText = value.toInt().toString();
+
+                                  return SideTitleWidget(
+                                    angle: 0,
+                                    space: 8,
+                                    meta: meta,
+                                    child: Text(
+                                      valueText,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                reservedSize: 30,
+                                interval: 1.0, // Always in kg
+                              ),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
+                          borderData: FlBorderData(
+                            show: true,
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          minX: minX - 5,
+                          maxX: maxX + 60, // Add more space for future data
+                          minY: finalMinY,
+                          maxY: finalMaxY,
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              tooltipPadding: EdgeInsets.all(8),
+                              tooltipRoundedRadius: 8,
+                              getTooltipItems: (
+                                List<LineBarSpot> touchedSpots,
+                              ) {
+                                return touchedSpots.map((spot) {
+                                  // First, check if this is one of the WHO standard lines
+                                  for (var entry in _whoStandardLines.entries) {
+                                    final lineType = entry.key;
+                                    final line = entry.value;
+
+                                    // Check if this spot belongs to a WHO line
+                                    bool isWHOLine = line.any(
+                                      (s) =>
+                                          (s.x - spot.x).abs() < 0.1 &&
+                                          (s.y - spot.y).abs() < 0.1,
+                                    );
+
+                                    if (isWHOLine) {
+                                      String lineLabel = "";
+                                      switch (lineType) {
+                                        case 'minus3SD':
+                                          lineLabel = "SD -3";
+                                          break;
+                                        case 'minus2SD':
+                                          lineLabel = "SD -2";
+                                          break;
+                                        case 'median':
+                                          lineLabel = "WHO Median";
+                                          break;
+                                        case 'plus2SD':
+                                          lineLabel = "SD +2";
+                                          break;
+                                        case 'plus3SD':
+                                          lineLabel = "SD +3";
+                                          break;
+                                        default:
+                                          lineLabel = lineType;
+                                      }
+
+                                      // Format weight with appropriate unit (always kg)
+                                      String weightText =
+                                          '${spot.y.toStringAsFixed(1)} kg';
+
+                                      return LineTooltipItem(
+                                        '$lineLabel: $weightText',
+                                        TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      );
+                                    }
+                                  }
+
+                                  // If not a WHO line, then it's a data point from the baby
+                                  // Find which entry this spot corresponds to
+                                  int dayNumber = -1;
+                                  for (var entry in sortedEntries) {
+                                    final days =
+                                        dayToDateMap[entry.key]!
+                                            .difference(_child!.dateOfBirth)
+                                            .inDays;
+                                    double weight =
+                                        entry.value / 1000; // Always in kg
+
+                                    if ((days.toDouble() - spot.x).abs() <
+                                            0.1 &&
+                                        (weight - spot.y).abs() < 0.1) {
+                                      dayNumber = entry.key;
+                                      break;
+                                    }
+                                  }
+
+                                  if (dayNumber > 0) {
+                                    // Get date for this day
+                                    final date = dayToDateMap[dayNumber]!;
+                                    final dateStr = DateFormat(
+                                      'd MMM',
+                                    ).format(date);
+
+                                    // Get category info if available
+                                    String category = "Normal";
+                                    if (dayData.containsKey(dayNumber) &&
+                                        dayData[dayNumber]!.containsKey(
+                                          'category',
+                                        )) {
+                                      switch (dayData[dayNumber]!['category']) {
+                                        case 'minus3SD':
+                                          category = "Underweight";
+                                          break;
+                                        case 'minus2SD':
+                                          category = "Underweight";
+                                          break;
+                                        case 'normal':
+                                          category = "Normal";
+                                          break;
+                                        case 'plus2SD':
+                                          category = "Overweight";
+                                          break;
+                                        case 'plus3SD':
+                                          category = "Overweight";
+                                          break;
+                                      }
+                                    }
+
+                                    // Format weight with appropriate unit (always kg)
+                                    String weightText =
+                                        '${spot.y.toStringAsFixed(1)} kg';
+
+                                    return LineTooltipItem(
+                                      '$dateStr: $weightText\n$category',
                                       TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
