@@ -1,5 +1,5 @@
 name: fmsbabyapp
-description: "A new Flutter project."
+description: 'A new Flutter project.'
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -58,7 +58,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -66,22 +65,21 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-     - assets/images/baby.png
-     - assets/images/Category.png
-     - assets/images/Contour.png
-     - assets/images/face.png
-     - assets/images/Icon.png
-     - assets/images/start_logo.jpeg
-     - assets/images/article.png
-     - assets/images/first_aid.png
-     - assets/images/Hospital.png
-     - assets/images/Milestones.png
-     - assets/images/nutrition.png 
-     - assets/images/profile.png
-     - assets/images/vaccination.png
-     - assets/images/vaccine_icon.png
-     - assets/images/google_logo.png
-     
+    - assets/images/baby.png
+    - assets/images/Category.png
+    - assets/images/Contour.png
+    - assets/images/face.png
+    - assets/images/Icon.png
+    - assets/images/start_logo.jpeg
+    - assets/images/article.png
+    - assets/images/first_aid.png
+    - assets/images/Hospital.png
+    - assets/images/Milestones.png
+    - assets/images/nutrition.png
+    - assets/images/profile.png
+    - assets/images/vaccination.png
+    - assets/images/vaccine_icon.png
+    - assets/images/google_logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
