@@ -1784,7 +1784,38 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     final minY = spots.map((e) => e.y).reduce((a, b) => a < b ? a : b);
     final maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
 
-    // Get min/max Y from WHO standards as well if available
+    // x axis calculation
+    double dataMaxX = maxX;
+    double whoMaxX = 0;
+    double whoMinX = double.infinity;
+
+    if (_whoStandardLines.isNotEmpty) {
+      for (var line in _whoStandardLines.values) {
+        if (line.isNotEmpty) {
+          double lineMaxX = line
+              .map((e) => e.x)
+              .reduce((a, b) => a > b ? a : b);
+          double lineMinX = line
+              .map((e) => e.x)
+              .reduce((a, b) => a < b ? a : b);
+          if (lineMaxX > whoMaxX) whoMaxX = lineMaxX;
+          if (lineMinX < whoMinX) whoMinX = lineMinX;
+        }
+      }
+    } else {
+      whoMaxX = 0;
+      whoMinX = 0;
+    }
+
+    double overallMaxX =
+        [dataMaxX, whoMaxX].reduce((a, b) => a > b ? a : b) + 5;
+    double overallMinX = [minX, whoMinX].reduce((a, b) => a < b ? a : b) - 5;
+    overallMinX = overallMinX < 0 ? 0 : overallMinX;
+
+    final minXAdjusted = overallMinX;
+    final maxXAdjusted = overallMaxX;
+
+    //Y axis calculation
     double finalMinY = minY;
     double finalMaxY = maxY;
 
@@ -1795,7 +1826,8 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
           var filteredLine =
               line
                   .where(
-                    (spot) => spot.x >= (minX - 30) && spot.x <= (maxX + 60),
+                    (spot) =>
+                        spot.x >= (minXAdjusted) && spot.x <= (maxXAdjusted),
                   )
                   .toList();
 
@@ -1859,7 +1891,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8.0, 16.0, 16.0, 16.0),
+        padding: const EdgeInsets.fromLTRB(8.0, 16.0, 20.0, 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1966,11 +1998,20 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 reservedSize:
-                                    44, // Increased for two-line display
+                                    60, // Increased for two-line display
                                 getTitlesWidget: (value, meta) {
                                   // Calculate date for this x value (days since birth)
-                                  if (value < 0)
+                                  if (value < 0) {
                                     return const SizedBox(); // Don't show negative values
+                                  }
+
+                                  final maxX =
+                                      meta.max; // get the max X value on the axis
+                                  if (value == maxX) {
+                                    // Skip the last label by returning an empty widget
+                                    return const SizedBox();
+                                  }
+
                                   final birthDate = _child!.dateOfBirth;
                                   final date = birthDate.add(
                                     Duration(days: value.toInt()),
@@ -2050,8 +2091,8 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                             show: true,
                             border: Border.all(color: Colors.grey.shade300),
                           ),
-                          minX: minX - 5,
-                          maxX: maxX + 60, // Add more space for future data
+                          minX: minXAdjusted,
+                          maxX: maxXAdjusted,
                           minY: finalMinY,
                           maxY: finalMaxY,
                           lineTouchData: LineTouchData(
@@ -2848,44 +2889,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     });
   }
 
-  /* Future<void> _deleteSelectedWeights(List<String> ids) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-
-      final collectionRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .collection('children')
-          .doc(widget.childId)
-          .collection('dailyWeights');
-
-      for (String id in ids) {
-        final docRef = collectionRef.doc(id);
-        batch.delete(docRef);
-      }
-
-      await batch.commit();
-
-      // Refresh the local data
-      await _loadChildData();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Deleted ${ids.length} weight entries.')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to delete weights: $e')));
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
-  } */
   Future<void> _deleteSelectedWeights(List<String> ids) async {
     setState(() {
       _isLoading = true;
