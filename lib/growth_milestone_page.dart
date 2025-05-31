@@ -89,63 +89,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     super.dispose();
   }
 
-  /* Future<void> _loadWHOStandardLines() async {
-    if (_child == null) return;
-
-    try {
-      final growthStandardService = GrowthStandardService();
-
-      // Get maximum age in days from the data
-      int maxDays = 365; // Default to 1 year
-      if (dayToDateMap.isNotEmpty) {
-        final latestDate = dayToDateMap.values.reduce(
-          (a, b) => a.isAfter(b) ? a : b,
-        );
-        maxDays =
-            latestDate.difference(_child!.dateOfBirth).inDays +
-            30; // Add buffer
-        maxDays = (maxDays ~/ 30 + 1) * 30; // Round to next month
-      }
-
-      // Get standard lines data
-      final standardLinesData = await growthStandardService
-          .getStandardLinesData(
-            _child!.gender,
-            _child!.dateOfBirth,
-            maxDays: maxDays,
-          );
-
-      // Convert to FlSpot format
-      Map<String, List<FlSpot>> lines = {};
-      standardLinesData.forEach((key, pointList) {
-        lines[key] =
-            pointList.map((point) {
-              // Convert to FlSpot with x as days since birth and y as weight
-              // Convert weight to kg if using kg units
-              double yValue =
-                  _isKgUnit
-                      ? (point['y'] as double) / 1000
-                      : (point['y'] as double);
-              return FlSpot(point['x'] as double, yValue);
-            }).toList();
-      });
-
-      if (mounted) {
-        setState(() {
-          _whoStandardLines = lines;
-          _isLoadingStandards = false;
-        });
-      }
-    } catch (e) {
-      print('Error loading WHO standards: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingStandards = false;
-        });
-      }
-    }
-  }
- */
   Future<void> _loadWHOStandardLines() async {
     if (_child == null) return;
 
@@ -207,72 +150,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       }
     }
   }
-  /* Widget _buildChartLegend() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Wrap(
-        spacing: 16.0,
-        runSpacing: 8.0,
-        children: [
-          _buildLegendItem(
-            'Your Baby',
-            const Color(0xFF1873EA),
-            isLine: true,
-            width: 3.0,
-          ),
-          _buildLegendItem(
-            'WHO Median',
-            Colors.green,
-            isLine: true,
-            width: 1.5,
-          ),
-          _buildLegendItem(
-            'Normal Range',
-            Colors.orange.withOpacity(0.7),
-            isDashed: true,
-          ),
-          _buildLegendItem(
-            'Extreme Range',
-            Colors.red.withOpacity(0.7),
-            isDashed: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(
-    String label,
-    Color color, {
-    bool isLine = false,
-    double width = 1.0,
-    bool isDashed = false,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 20,
-          height: isLine ? 2 : 12,
-          decoration: BoxDecoration(
-            color: isDashed ? Colors.transparent : color,
-            borderRadius: isLine ? null : BorderRadius.circular(6),
-          ),
-          child:
-              isDashed
-                  ? CustomPaint(
-                    painter: DashedLinePainter(
-                      color: color,
-                      strokeWidth: width,
-                    ),
-                  )
-                  : null,
-        ),
-        SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.black87)),
-      ],
-    );
-  } */
 
   Widget _buildChartLegend() {
     return Container(
@@ -1793,1039 +1670,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
-  /* Widget _buildGrowthChart() {
-    if (weightData.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: 300, // Increased height for better visualization
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          shadows: [
-            BoxShadow(
-              color: Color(0x3F000000),
-              blurRadius: 8,
-              offset: Offset(2, 2),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            'No weight data available yet',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Sort entries by date for chronological chart
-    List<MapEntry<int, double>> sortedEntries = [];
-
-    for (var entry in weightData.entries) {
-      // Only include entries that have dates
-      if (dayToDateMap.containsKey(entry.key)) {
-        sortedEntries.add(entry);
-      }
-    }
-
-    // Sort by date
-    sortedEntries.sort((a, b) {
-      final dateA = dayToDateMap[a.key]!;
-      final dateB = dayToDateMap[b.key]!;
-      return dateA.compareTo(dateB);
-    });
-
-    // Calculate days since birth for x-axis and prepare spots data
-    List<FlSpot> spots = [];
-    List<Color> spotColors = [];
-
-    for (var entry in sortedEntries) {
-      final dayNumber = entry.key;
-      final date = dayToDateMap[dayNumber]!;
-      final birthDate = _child!.dateOfBirth;
-      final daysSinceBirth = date.difference(birthDate).inDays;
-
-      // Convert weight to kg for the chart if using kg units
-      final weightValue = _isKgUnit ? entry.value / 1000 : entry.value;
-
-      spots.add(FlSpot(daysSinceBirth.toDouble(), weightValue));
-
-      // Get color for this point based on weight category
-      Color spotColor;
-      if (dayData.containsKey(dayNumber) &&
-          dayData[dayNumber]!.containsKey('color')) {
-        spotColor = hexToColor(dayData[dayNumber]!['color']);
-      } else {
-        spotColor = const Color(0xFF1873EA); // Default blue
-      }
-      spotColors.add(spotColor);
-    }
-
-    // Get min and max values for scaling
-    if (spots.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: 300, // Increased height for better visualization
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          shadows: [
-            BoxShadow(
-              color: Color(0x3F000000),
-              blurRadius: 8,
-              offset: Offset(2, 2),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            'No weight data with dates available',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final minX = spots.map((e) => e.x).reduce((a, b) => a < b ? a : b);
-    final maxX = spots.map((e) => e.x).reduce((a, b) => a > b ? a : b);
-    final minY = spots.map((e) => e.y).reduce((a, b) => a < b ? a : b);
-    final maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
-
-    // Calculate intervals for x and y axes - handle the case where min=max
-    final double xInterval = (maxX - minX) <= 0 ? 1.0 : (maxX - minX) / 5;
-    final double yInterval = (maxY - minY) <= 0 ? 0.1 : (maxY - minY) / 4;
-
-    return Container(
-      width: double.infinity,
-      height: 300, // Increased height for better visualization
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        shadows: [
-          BoxShadow(
-            color: Color(0x3F000000),
-            blurRadius: 8,
-            offset: Offset(2, 2),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Weight Progress',
-                  style: TextStyle(
-                    color: const Color(0xFF1873EA),
-                    fontSize: 16,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1873EA),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      _isKgUnit ? 'Weight (kg)' : 'Weight (grams)',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Expanded(
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: true,
-                    horizontalInterval:
-                        _isKgUnit ? 0.5 : 500, // Adjust for kg or grams
-                    verticalInterval:
-                        30, // Show approximately monthly intervals
-                    getDrawingHorizontalLine: (value) {
-                      return FlLine(
-                        color: Colors.grey.shade300,
-                        strokeWidth: 1,
-                      );
-                    },
-                    getDrawingVerticalLine: (value) {
-                      return FlLine(
-                        color: Colors.grey.shade300,
-                        strokeWidth: 1,
-                      );
-                    },
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        getTitlesWidget: (value, meta) {
-                          // Calculate date for this x value (days since birth)
-                          if (value < 0)
-                            return const SizedBox(); // Don't show negative values
-                          final birthDate = _child!.dateOfBirth;
-                          final date = birthDate.add(
-                            Duration(days: value.toInt()),
-                          );
-                          final dateStr = DateFormat('d MMM').format(date);
-
-                          return SideTitleWidget(
-                            angle: 0,
-                            space: 8,
-                            meta: meta,
-                            child: Text(
-                              dateStr,
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 9, // Smaller font for dates
-                              ),
-                            ),
-                          );
-                        },
-                        interval: 30, // Show approximately monthly intervals
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          if (value < 0)
-                            return const SizedBox(); // Don't show negative values
-
-                          // Format with appropriate precision based on unit
-                          String valueText =
-                              _isKgUnit
-                                  ? value.toStringAsFixed(1)
-                                  : value.toInt().toString();
-
-                          return SideTitleWidget(
-                            angle: 0,
-                            space: 8,
-                            meta: meta,
-                            child: Text(
-                              valueText,
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 10,
-                              ),
-                            ),
-                          );
-                        },
-                        reservedSize: 40,
-                        interval:
-                            _isKgUnit ? 0.5 : 500, // Adjust for kg or grams
-                      ),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  minX: minX - 5,
-                  maxX: maxX + 5,
-                  minY: _isKgUnit ? (minY - 0.2) : (minY - 200),
-                  maxY: _isKgUnit ? (maxY + 0.2) : (maxY + 200),
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      tooltipPadding: EdgeInsets.all(8),
-                      tooltipRoundedRadius: 8,
-                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          // Find which entry this spot corresponds to
-                          final index = spots.indexWhere(
-                            (s) => s.x == spot.x && s.y == spot.y,
-                          );
-
-                          if (index >= 0 && index < sortedEntries.length) {
-                            final entry = sortedEntries[index];
-                            final dayNumber = entry.key;
-
-                            // Get date for this day
-                            final date = dayToDateMap[dayNumber]!;
-                            final dateStr = DateFormat(
-                              'dd MMM yyyy',
-                            ).format(date);
-
-                            // Get category info if available
-                            String? category = "Normal";
-                            if (dayData.containsKey(dayNumber) &&
-                                dayData[dayNumber]!.containsKey('category')) {
-                              switch (dayData[dayNumber]!['category']) {
-                                case 'minus3SD':
-                                  category = "Severely Underweight";
-                                  break;
-                                case 'minus2SD':
-                                  category = "Underweight";
-                                  break;
-                                case 'normal':
-                                  category = "Normal";
-                                  break;
-                                case 'plus2SD':
-                                  category = "Overweight";
-                                  break;
-                                case 'plus3SD':
-                                  category = "Extremely Overweight";
-                                  break;
-                              }
-                            }
-
-                            // Format weight with appropriate unit
-                            String weightText =
-                                _isKgUnit
-                                    ? '${spot.y.toStringAsFixed(2)} kg'
-                                    : '${spot.y.toInt()} g';
-
-                            return LineTooltipItem(
-                              'Day $dayNumber\n${dateStr}\n${weightText}\nStatus: ${category}',
-                              TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            );
-                          } else {
-                            // Fallback
-                            return LineTooltipItem(
-                              'Unknown point',
-                              TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            );
-                          }
-                        }).toList();
-                      },
-                    ),
-                    touchCallback: (
-                      FlTouchEvent event,
-                      LineTouchResponse? response,
-                    ) {
-                      // Optional: Add callback for touch events
-                    },
-                    handleBuiltInTouches: true,
-                  ),
-                  lineBarsData: [
-                    // Main weight data line
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      color: const Color(0xFF1873EA),
-                      barWidth: 3,
-                      isStrokeCapRound: true,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          // Use color from weight category data if available
-                          Color dotColor =
-                              index < spotColors.length
-                                  ? spotColors[index]
-                                  : const Color(0xFF1873EA);
-
-                          return FlDotCirclePainter(
-                            radius: 5,
-                            color: dotColor,
-                            strokeWidth: 2,
-                            strokeColor: Colors.white,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: const Color(0xFF1873EA).withOpacity(0.1),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  } */
-
-  /* Widget _buildGrowthChart() {
-    if (weightData.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: 400, // Increased height for better visualization
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          shadows: [
-            BoxShadow(
-              color: Color(0x3F000000),
-              blurRadius: 8,
-              offset: Offset(2, 2),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            'No weight data available yet',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Sort entries by date for chronological chart
-    List<MapEntry<int, double>> sortedEntries = [];
-
-    for (var entry in weightData.entries) {
-      // Only include entries that have dates
-      if (dayToDateMap.containsKey(entry.key)) {
-        sortedEntries.add(entry);
-      }
-    }
-
-    // Sort by date
-    sortedEntries.sort((a, b) {
-      final dateA = dayToDateMap[a.key]!;
-      final dateB = dayToDateMap[b.key]!;
-      return dateA.compareTo(dateB);
-    });
-
-    // Calculate days since birth for x-axis and prepare spots data
-    List<FlSpot> spots = [];
-    List<Color> spotColors = [];
-
-    for (var entry in sortedEntries) {
-      final dayNumber = entry.key;
-      final date = dayToDateMap[dayNumber]!;
-      final birthDate = _child!.dateOfBirth;
-      final daysSinceBirth = date.difference(birthDate).inDays;
-
-      // Convert weight to kg for the chart if using kg units
-      final weightValue = _isKgUnit ? entry.value / 1000 : entry.value;
-
-      spots.add(FlSpot(daysSinceBirth.toDouble(), weightValue));
-
-      // Get color for this point based on weight category
-      Color spotColor;
-      if (dayData.containsKey(dayNumber) &&
-          dayData[dayNumber]!.containsKey('color')) {
-        spotColor = hexToColor(dayData[dayNumber]!['color']);
-      } else {
-        spotColor = const Color(0xFF1873EA); // Default blue
-      }
-      spotColors.add(spotColor);
-    }
-
-    // Get min and max values for scaling
-    if (spots.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: 300, // Increased height for better visualization
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          shadows: [
-            BoxShadow(
-              color: Color(0x3F000000),
-              blurRadius: 8,
-              offset: Offset(2, 2),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            'No weight data with dates available',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final minX = spots.map((e) => e.x).reduce((a, b) => a < b ? a : b);
-    final maxX = spots.map((e) => e.x).reduce((a, b) => a > b ? a : b);
-    final minY = spots.map((e) => e.y).reduce((a, b) => a < b ? a : b);
-    final maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
-
-    // Get min/max Y from WHO standards as well if available
-    double finalMinY = minY;
-    double finalMaxY = maxY;
-
-    if (_whoStandardLines.isNotEmpty) {
-      for (var line in _whoStandardLines.values) {
-        if (line.isNotEmpty) {
-          // Filter standard lines to only include the range we're displaying
-          var filteredLine =
-              line
-                  .where(
-                    (spot) => spot.x >= (minX - 10) && spot.x <= (maxX + 10),
-                  )
-                  .toList();
-
-          if (filteredLine.isNotEmpty) {
-            final lineMinY = filteredLine
-                .map((e) => e.y)
-                .reduce((a, b) => a < b ? a : b);
-            final lineMaxY = filteredLine
-                .map((e) => e.y)
-                .reduce((a, b) => a > b ? a : b);
-
-            finalMinY = finalMinY < lineMinY ? finalMinY : lineMinY;
-            finalMaxY = finalMaxY > lineMaxY ? finalMaxY : lineMaxY;
-          }
-        }
-      }
-    }
-
-    // Add smaller padding to min/max Y to keep lines in visible area
-    finalMinY =
-        _isKgUnit
-            ? (finalMinY - 0.1).floorToDouble()
-            : (finalMinY - 100).floorToDouble();
-    finalMaxY =
-        _isKgUnit
-            ? (finalMaxY + 0.1).ceilToDouble()
-            : (finalMaxY + 100).ceilToDouble();
-
-    // Ensure min and max aren't too close
-    if (finalMaxY - finalMinY < (_isKgUnit ? 1.0 : 1000)) {
-      finalMinY = _isKgUnit ? (finalMinY - 0.5) : (finalMinY - 500);
-      finalMaxY = _isKgUnit ? (finalMaxY + 0.5) : (finalMaxY + 500);
-    }
-
-    // Calculate intervals for x and y axes
-    final double xInterval = (maxX - minX) <= 0 ? 1.0 : (maxX - minX) / 5;
-    final double yInterval =
-        _isKgUnit ? 0.5 : 500; // Fixed intervals based on unit
-
-    // Load WHO standard lines if not already loaded
-    if (_whoStandardLines.isEmpty && !_isLoadingStandards && _child != null) {
-      _isLoadingStandards = true;
-      _loadWHOStandardLines();
-    }
-
-    return Container(
-      width: double.infinity,
-      height: 320, // Increased height for better visualization and legend
-      decoration: ShapeDecoration(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        shadows: [
-          BoxShadow(
-            color: Color(0x3F000000),
-            blurRadius: 8,
-            offset: Offset(2, 2),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8.0, 16.0, 16.0, 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Weight Progress',
-                  style: TextStyle(
-                    color: const Color(0xFF1873EA),
-                    fontSize: 16,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.info_outline,
-                        size: 18,
-                        color: Color(0xFF1873EA),
-                      ),
-                      onPressed: () => _showWHOStandardsInfo(context),
-                      padding: EdgeInsets.zero,
-                      constraints: BoxConstraints(),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      _isKgUnit ? 'Weight (kg)' : 'Weight (grams)',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 4),
-            // Add legend for the chart
-            _buildChartLegend(),
-            SizedBox(height: 10),
-            Expanded(
-              child:
-                  _isLoadingStandards && spots.isEmpty
-                      ? Center(child: CircularProgressIndicator())
-                      : LineChart(
-                        LineChartData(
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: true,
-                            horizontalInterval: yInterval,
-                            verticalInterval: 30, // Monthly intervals
-                            getDrawingHorizontalLine: (value) {
-                              return FlLine(
-                                color: Colors.grey.shade300,
-                                strokeWidth: 1,
-                              );
-                            },
-                            getDrawingVerticalLine: (value) {
-                              return FlLine(
-                                color: Colors.grey.shade300,
-                                strokeWidth: 1,
-                              );
-                            },
-                          ),
-                          titlesData: FlTitlesData(
-                            show: true,
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize:
-                                    44, // Increased for two-line display
-                                getTitlesWidget: (value, meta) {
-                                  // Calculate date for this x value (days since birth)
-                                  if (value < 0)
-                                    return const SizedBox(); // Don't show negative values
-                                  final birthDate = _child!.dateOfBirth;
-                                  final date = birthDate.add(
-                                    Duration(days: value.toInt()),
-                                  );
-
-                                  // Format date in two lines
-                                  final month = DateFormat('MMM').format(date);
-                                  final day = DateFormat('d').format(date);
-
-                                  return SideTitleWidget(
-                                    angle: 0,
-                                    space: 8,
-                                    meta: meta,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          day,
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 9,
-                                          ),
-                                        ),
-                                        Text(
-                                          month,
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 9,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                interval: 30, // Monthly intervals
-                              ),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  if (value < 0)
-                                    return const SizedBox(); // Don't show negative values
-
-                                  // Only show fewer Y-axis labels (every kg or 1000g)
-                                  if (_isKgUnit) {
-                                    if (value.round() != value)
-                                      return const SizedBox();
-                                  } else {
-                                    if ((value % 1000) != 0)
-                                      return const SizedBox();
-                                  }
-
-                                  // Format with appropriate precision based on unit
-                                  String valueText =
-                                      _isKgUnit
-                                          ? value.toInt().toString()
-                                          : value.toInt().toString();
-
-                                  return SideTitleWidget(
-                                    angle: 0,
-                                    space: 8,
-                                    meta: meta,
-                                    child: Text(
-                                      valueText,
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                reservedSize: 30,
-                                interval:
-                                    _isKgUnit
-                                        ? 1.0
-                                        : 1000, // Show every kg or 1000g
-                              ),
-                            ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                          ),
-                          borderData: FlBorderData(
-                            show: true,
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          minX: minX - 5,
-                          maxX: maxX + 30, // Add space for future data
-                          minY: finalMinY,
-                          maxY: finalMaxY,
-                          lineTouchData: LineTouchData(
-                            touchTooltipData: LineTouchTooltipData(
-                              tooltipPadding: EdgeInsets.all(8),
-                              tooltipRoundedRadius: 8,
-                              getTooltipItems: (
-                                List<LineBarSpot> touchedSpots,
-                              ) {
-                                return touchedSpots.map((spot) {
-                                  // First, check if this is one of the WHO standard lines
-                                  for (var entry in _whoStandardLines.entries) {
-                                    final lineType = entry.key;
-                                    final line = entry.value;
-
-                                    // Check if this spot belongs to a WHO line
-                                    bool isWHOLine = line.any(
-                                      (s) =>
-                                          (s.x - spot.x).abs() < 0.1 &&
-                                          (s.y - spot.y).abs() < 0.1,
-                                    );
-
-                                    if (isWHOLine) {
-                                      String lineLabel = "";
-                                      switch (lineType) {
-                                        case 'minus3SD':
-                                          lineLabel = "SD -3)";
-                                          break;
-                                        case 'minus2SD':
-                                          lineLabel = "SD -2";
-                                          break;
-                                        case 'median':
-                                          lineLabel = "WHO Median";
-                                          break;
-                                        case 'plus2SD':
-                                          lineLabel = "SD +2";
-                                          break;
-                                        case 'plus3SD':
-                                          lineLabel = "SD +";
-                                          break;
-                                        default:
-                                          lineLabel = lineType;
-                                      }
-
-                                      /* // Calculate date for this x value (days since birth)
-                                      final birthDate = _child!.dateOfBirth;
-                                      final date = birthDate.add(
-                                        Duration(days: spot.x.toInt()),
-                                      );
-                                      final dateStr = DateFormat(
-                                        'dd MMM yyyy',
-                                      ).format(date); */
-
-                                      // Format weight with appropriate unit
-                                      String weightText =
-                                          _isKgUnit
-                                              ? '${spot.y.toStringAsFixed(2)} kg'
-                                              : '${spot.y.toInt()} g';
-
-                                      return LineTooltipItem(
-                                        '$lineLabel:$weightText',
-                                        TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      );
-                                    }
-                                  }
-
-                                  // If not a WHO line, then it's a data point from the baby
-                                  // Find which entry this spot corresponds to
-                                  int dayNumber = -1;
-                                  for (var entry in sortedEntries) {
-                                    final days =
-                                        dayToDateMap[entry.key]!
-                                            .difference(_child!.dateOfBirth)
-                                            .inDays;
-                                    double weight =
-                                        _isKgUnit
-                                            ? entry.value / 1000
-                                            : entry.value;
-
-                                    if ((days.toDouble() - spot.x).abs() <
-                                            0.1 &&
-                                        (weight - spot.y).abs() < 0.1) {
-                                      dayNumber = entry.key;
-                                      break;
-                                    }
-                                  }
-
-                                  if (dayNumber > 0) {
-                                    // Get date for this day
-                                    final date = dayToDateMap[dayNumber]!;
-                                    final dateStr = DateFormat(
-                                      'dd MMM yyyy',
-                                    ).format(date);
-
-                                    // Get category info if available
-                                    String category = "Normal";
-                                    if (dayData.containsKey(dayNumber) &&
-                                        dayData[dayNumber]!.containsKey(
-                                          'category',
-                                        )) {
-                                      switch (dayData[dayNumber]!['category']) {
-                                        case 'minus3SD':
-                                          category = "Severely Underweight";
-                                          break;
-                                        case 'minus2SD':
-                                          category = "Underweight";
-                                          break;
-                                        case 'normal':
-                                          category = "Normal";
-                                          break;
-                                        case 'plus2SD':
-                                          category = "Overweight";
-                                          break;
-                                        case 'plus3SD':
-                                          category = "Extremely Overweight";
-                                          break;
-                                      }
-                                    }
-
-                                    // Format weight with appropriate unit
-                                    String weightText =
-                                        _isKgUnit
-                                            ? '${spot.y.toStringAsFixed(2)} kg'
-                                            : '${spot.y.toInt()} g';
-
-                                    return LineTooltipItem(
-                                      'dateStr:$weightText\n${category}',
-                                      TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    );
-                                  } else {
-                                    // Fallback
-                                    return LineTooltipItem(
-                                      'Unknown point',
-                                      TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    );
-                                  }
-                                }).toList();
-                              },
-                            ),
-                            touchCallback: (
-                              FlTouchEvent event,
-                              LineTouchResponse? response,
-                            ) {
-                              // Optional: Add callback for touch events
-                            },
-                            handleBuiltInTouches: true,
-                          ),
-                          lineBarsData: [
-                            // WHO standard lines (display below actual data)
-                            if (_whoStandardLines.containsKey('minus3SD'))
-                              LineChartBarData(
-                                spots: _whoStandardLines['minus3SD']!,
-                                isCurved: true,
-                                color: Colors.red.withOpacity(0.7),
-                                barWidth: 1,
-                                isStrokeCapRound: true,
-                                dotData: FlDotData(show: false),
-                                dashArray: [5, 5], // Dashed line
-                                belowBarData: BarAreaData(show: false),
-                              ),
-                            if (_whoStandardLines.containsKey('minus2SD'))
-                              LineChartBarData(
-                                spots: _whoStandardLines['minus2SD']!,
-                                isCurved: true,
-                                color: Colors.orange.withOpacity(0.7),
-                                barWidth: 1,
-                                isStrokeCapRound: true,
-                                dotData: FlDotData(show: false),
-                                dashArray: [5, 5], // Dashed line
-                                belowBarData: BarAreaData(show: false),
-                              ),
-                            if (_whoStandardLines.containsKey('median'))
-                              LineChartBarData(
-                                spots: _whoStandardLines['median']!,
-                                isCurved: true,
-                                color: Colors.green,
-                                barWidth: 1.5,
-                                isStrokeCapRound: true,
-                                dotData: FlDotData(show: false),
-                                belowBarData: BarAreaData(show: false),
-                              ),
-                            if (_whoStandardLines.containsKey('plus2SD'))
-                              LineChartBarData(
-                                spots: _whoStandardLines['plus2SD']!,
-                                isCurved: true,
-                                color: Colors.orange.withOpacity(0.7),
-                                barWidth: 1,
-                                isStrokeCapRound: true,
-                                dotData: FlDotData(show: false),
-                                dashArray: [5, 5], // Dashed line
-                                belowBarData: BarAreaData(show: false),
-                              ),
-                            if (_whoStandardLines.containsKey('plus3SD'))
-                              LineChartBarData(
-                                spots: _whoStandardLines['plus3SD']!,
-                                isCurved: true,
-                                color: Colors.red.withOpacity(0.7),
-                                barWidth: 1,
-                                isStrokeCapRound: true,
-                                dotData: FlDotData(show: false),
-                                dashArray: [5, 5], // Dashed line
-                                belowBarData: BarAreaData(show: false),
-                              ),
-
-                            // Main weight data line (display on top)
-                            LineChartBarData(
-                              spots: spots,
-                              isCurved: true,
-                              color: const Color(0xFF1873EA),
-                              barWidth: 3,
-                              isStrokeCapRound: true,
-                              dotData: FlDotData(
-                                show: true,
-                                getDotPainter: (spot, percent, barData, index) {
-                                  // Use color from weight category data if available
-                                  Color dotColor =
-                                      index < spotColors.length
-                                          ? spotColors[index]
-                                          : const Color(0xFF1873EA);
-
-                                  return FlDotCirclePainter(
-                                    radius: 5,
-                                    color: dotColor,
-                                    strokeWidth: 2,
-                                    strokeColor: Colors.white,
-                                  );
-                                },
-                              ),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: const Color(0xFF1873EA).withOpacity(0.1),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-            ),
-            // Loading indicator for WHO standards if applicable
-            if (_isLoadingStandards && _whoStandardLines.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF1873EA),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      "Loading WHO standards...",
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  } */
-
   Widget _buildGrowthChart() {
     if (weightData.isEmpty) {
       return Container(
@@ -3765,10 +2609,570 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                         ),
               ),
             ),
+            // After your Save button widget:
+            SizedBox(height: 12),
+            Center(
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _showDeleteWeightsDialog,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  minimumSize: Size(200, 48),
+                ),
+                child: Text(
+                  'Delete Weight',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  /* Future<void> _showDeleteWeightsDialog() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Fetch daily weights collection for the child (adapt if your collection name differs)
+      final dailyWeightsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .collection('children')
+              .doc(widget.childId)
+              .collection('dailyWeights')
+              .orderBy('date', descending: true)
+              .get();
+
+      final weights = dailyWeightsSnapshot.docs;
+
+      if (weights.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No weight entries found to delete.')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Selected ids for deletion
+      List<String> selectedIds = [];
+
+      // Show dialog
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return AlertDialog(
+                title: Text('Select weights to delete'),
+                content: Container(
+                  width: double.maxFinite,
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: weights.length,
+                    itemBuilder: (context, index) {
+                      final doc = weights[index];
+                      final data = doc.data();
+
+                      final date = (data['date'] as Timestamp).toDate();
+                      final weight = data['weight'];
+                      final dayNumber = data['dayNumber'] ?? '-';
+
+                      final formattedDate = DateFormat(
+                        'dd/MM/yyyy',
+                      ).format(date);
+                      final label =
+                          'Day $dayNumber - $formattedDate - Weight: $weight g';
+
+                      final isSelected = selectedIds.contains(doc.id);
+
+                      return CheckboxListTile(
+                        title: Text(label),
+                        value: isSelected,
+                        onChanged: (bool? checked) {
+                          setStateDialog(() {
+                            if (checked == true) {
+                              selectedIds.add(doc.id);
+                            } else {
+                              selectedIds.remove(doc.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed:
+                        selectedIds.isEmpty
+                            ? null
+                            : () async {
+                              Navigator.pop(context);
+                              await _deleteSelectedWeights(selectedIds);
+                            },
+                    child: Text('Delete'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load weights: $e')));
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  } */
+
+  /* Future<void> _showDeleteWeightsDialog() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final dailyWeightsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .collection('children')
+              .doc(widget.childId)
+              .collection('dailyWeights')
+              .orderBy('date', descending: true)
+              .get();
+
+      final weights = dailyWeightsSnapshot.docs;
+
+      if (weights.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No weight entries found to delete.')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      List<String> selectedIds = [];
+
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return AlertDialog(
+                title: Text('Select weights to delete'),
+                content: Container(
+                  width: double.maxFinite,
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: weights.length,
+                    itemBuilder: (context, index) {
+                      final doc = weights[index];
+                      final data = doc.data();
+
+                      final date = (data['date'] as Timestamp).toDate();
+                      final weightInKg = (data['weight'] ?? 0) / 1000.0;
+
+                      final formattedDate = DateFormat(
+                        'dd/MM/yyyy',
+                      ).format(date);
+                      final label =
+                          '$formattedDate - Weight: ${weightInKg.toStringAsFixed(2)} kg';
+
+                      final isSelected = selectedIds.contains(doc.id);
+
+                      return CheckboxListTile(
+                        title: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        value: isSelected,
+                        onChanged: (bool? checked) {
+                          setStateDialog(() {
+                            if (checked == true) {
+                              selectedIds.add(doc.id);
+                            } else {
+                              selectedIds.remove(doc.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red, // red delete button
+
+                    ),
+                    onPressed:
+                        selectedIds.isEmpty
+                            ? null
+                            : () async {
+                              Navigator.pop(context);
+                              await _deleteSelectedWeights(selectedIds);
+                            },
+                    child: Text('Delete'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load weights: $e')));
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  } */
+
+  Future<void> _showDeleteWeightsDialog() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final dailyWeightsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .collection('children')
+              .doc(widget.childId)
+              .collection('dailyWeights')
+              .orderBy('date', descending: true)
+              .get();
+
+      final weights = dailyWeightsSnapshot.docs;
+
+      if (weights.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No weight entries found to delete.')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      List<String> selectedIds = [];
+
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Container(
+                  padding: EdgeInsets.all(20),
+                  width: double.maxFinite,
+                  height: 500,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Select weights to delete',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Expanded(
+                        child: Scrollbar(
+                          thumbVisibility: true, // always show scrollbar thumb
+                          thickness:
+                              4, // thicker scrollbar for better visibility
+                          radius: Radius.circular(8),
+                          child: ListView.builder(
+                            itemCount: weights.length,
+                            itemBuilder: (context, index) {
+                              final doc = weights[index];
+                              final data = doc.data();
+
+                              final date = (data['date'] as Timestamp).toDate();
+                              final weightInKg = (data['weight'] ?? 0) / 1000.0;
+
+                              final formattedDate = DateFormat(
+                                'dd/MM/yyyy',
+                              ).format(date);
+                              final label =
+                                  '$formattedDate - Weight: ${weightInKg.toStringAsFixed(2)} kg';
+
+                              final isSelected = selectedIds.contains(doc.id);
+
+                              return Container(
+                                margin: EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 0,
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color:
+                                        Colors
+                                            .blueAccent, // same color as the bullet
+                                    width: 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: CheckboxListTile(
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 0,
+                                    vertical: 0,
+                                  ),
+                                  value: isSelected,
+                                  onChanged: (bool? checked) {
+                                    setStateDialog(() {
+                                      if (checked == true) {
+                                        selectedIds.add(doc.id);
+                                      } else {
+                                        selectedIds.remove(doc.id);
+                                      }
+                                    });
+                                  },
+                                  title: Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        margin: EdgeInsets.only(right: 12),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              Colors
+                                                  .blueAccent, // same accent color
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          label,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.grey[700],
+                              textStyle: TextStyle(fontSize: 16),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('Cancel'),
+                          ),
+                          SizedBox(width: 16),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              textStyle: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onPressed:
+                                selectedIds.isEmpty
+                                    ? null
+                                    : () async {
+                                      Navigator.pop(context);
+                                      await _deleteSelectedWeights(selectedIds);
+                                    },
+                            child: Text(
+                              'Delete',
+                              style: TextStyle(
+                                color:
+                                    Colors.white, // White text for red button
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load weights: $e')));
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  /* Future<void> _deleteSelectedWeights(List<String> ids) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+
+      final collectionRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('dailyWeights');
+
+      for (String id in ids) {
+        final docRef = collectionRef.doc(id);
+        batch.delete(docRef);
+      }
+
+      await batch.commit();
+
+      // Refresh the local data
+      await _loadChildData();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deleted ${ids.length} weight entries.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete weights: $e')));
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  } */
+  Future<void> _deleteSelectedWeights(List<String> ids) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+      final dailyWeightsCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('dailyWeights');
+
+      final childDocRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.childId);
+
+      // Batch delete
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (String id in ids) {
+        final docRef = dailyWeightsCollection.doc(id);
+        batch.delete(docRef);
+      }
+
+      await batch.commit();
+
+      // Fetch remaining weights to find latest
+      final remainingWeightsSnapshot =
+          await dailyWeightsCollection
+              .orderBy('date', descending: true)
+              .limit(1)
+              .get();
+
+      if (remainingWeightsSnapshot.docs.isNotEmpty) {
+        final latestEntry = remainingWeightsSnapshot.docs.first.data();
+        final latestWeight = latestEntry['weight'] ?? 0;
+
+        // Update currentWeight in child document
+        await childDocRef.update({'currentWeight': latestWeight});
+      } else {
+        // No remaining weights, set currentWeight to 0 or null
+        await childDocRef.update({'currentWeight': null});
+      }
+
+      // Reload data in UI
+      await _loadChildData();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deleted ${ids.length} weight entries.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete weights: $e')));
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Widget _buildBottomNavBar() {
