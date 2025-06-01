@@ -1429,7 +1429,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     }
   }
 
-  Future<void> updateWeight(String weightInput) async {
+  /* Future<void> updateWeight(String weightInput) async {
     if (weightInput.isEmpty) return;
 
     setState(() {
@@ -1566,6 +1566,165 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
               isUpdate
                   ? 'Updated weight for day $dayNumber (${DateFormat('dd/MM/yyyy').format(normalizedSelectedDate)})'
                   : 'Added weight for day $dayNumber (${DateFormat('dd/MM/yyyy').format(normalizedSelectedDate)})',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Refresh data to update UI
+        _loadChildData();
+
+        // Ensure WHO standards are loaded
+        if (!_isLoadingStandards && _whoStandardLines.isEmpty) {
+          _isLoadingStandards = true;
+          _loadWHOStandardLines();
+        }
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating weight: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  } */
+  // Modified updateWeight method
+  Future<void> updateWeight(String weightInput) async {
+    if (weightInput.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Parse weight as double
+      double weightValue = double.tryParse(weightInput) ?? 0;
+      if (weightValue <= 0) {
+        throw Exception('Weight must be greater than zero');
+      }
+
+      // Convert kg to grams for storage if using kg
+      double weightInGrams = _isKgUnit ? weightValue * 1000 : weightValue;
+
+      if (_child == null) {
+        throw Exception('Child data not loaded');
+      }
+
+      // Ensure we're not selecting a future date
+      final DateTime now = DateTime.now();
+      final DateTime today = DateTime(now.year, now.month, now.day);
+      final normalizedSelectedDate = normalizeDate(_selectedDate);
+
+      if (normalizedSelectedDate.isAfter(today)) {
+        throw Exception('Cannot add weight for future dates');
+      }
+
+      // Convert date to key for mapping
+      final dateKey = dateToKey(normalizedSelectedDate);
+
+      // Get the weight category for this measurement (before saving)
+      final weightCategory = await determineWeightCategory(
+        weightInGrams,
+        _child!.dateOfBirth,
+        normalizedSelectedDate,
+        _child!.gender,
+      );
+
+      // Check if this date already has an entry
+      bool isUpdate = false;
+      String? existingDocId;
+
+      if (dateToDayMap.containsKey(dateKey)) {
+        // This is an update to existing date
+        isUpdate = true;
+
+        // Find the document ID for this date
+        final userId = FirebaseAuth.instance.currentUser!.uid;
+        final dailyWeightsCollection = FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('children')
+            .doc(widget.childId)
+            .collection('dailyWeights');
+
+        final querySnapshot =
+            await dailyWeightsCollection
+                .where(
+                  'date',
+                  isEqualTo: Timestamp.fromDate(normalizedSelectedDate),
+                )
+                .limit(1)
+                .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          existingDocId = querySnapshot.docs.first.id;
+        }
+      }
+
+      if (isUpdate && existingDocId != null) {
+        // Update existing document
+        await _childService.updateDailyWeight(
+          widget.childId,
+          existingDocId,
+          weight: weightInGrams,
+        );
+
+        debugPrint(
+          'Updated existing weight entry for date: $normalizedSelectedDate',
+        );
+      } else {
+        // This is a new entry - add it first, then reassign all day numbers chronologically
+
+        // Add the new weight entry with a temporary day number
+        await _childService.addDailyWeight(
+          widget.childId,
+          dayNumber: 999, // Temporary day number
+          date: normalizedSelectedDate,
+          weight: weightInGrams,
+        );
+
+        debugPrint('Added new weight entry for date: $normalizedSelectedDate');
+
+        // Now reassign all day numbers chronologically
+        await _reassignDayNumbersChronologically();
+
+        print('Reassigned all day numbers chronologically');
+      }
+
+      // Handle birth date special case
+      final birthDate = normalizeDate(_child!.dateOfBirth);
+      if (normalizedSelectedDate.isAtSameMomentAs(birthDate)) {
+        // Also update the child's birth weight
+        await _childService.updateChild(widget.childId, {
+          'weight': weightInGrams,
+        });
+      }
+
+      // Update current weight to the weight from the latest chronological date
+      await _updateCurrentWeightToLatest();
+
+      // Show status message based on weight category
+      setState(() {
+        _weightStatusMessage = weightCategory['info']['message'];
+        _weightStatusColor = hexToColor(weightCategory['info']['color']);
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isUpdate
+                  ? 'Updated weight for ${DateFormat('dd/MM/yyyy').format(normalizedSelectedDate)}'
+                  : 'Added weight for ${DateFormat('dd/MM/yyyy').format(normalizedSelectedDate)}',
             ),
             backgroundColor: Colors.green,
           ),
@@ -3507,7 +3666,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     });
   }
 
-  Future<void> _deleteSelectedWeights(List<String> ids) async {
+  /* Future<void> _deleteSelectedWeights(List<String> ids) async {
     setState(() {
       _isLoading = true;
     });
@@ -3570,6 +3729,134 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     setState(() {
       _isLoading = false;
     });
+  } */
+
+  /* Future<void> _deleteSelectedWeights(List<String> ids) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+      final dailyWeightsCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('dailyWeights');
+
+      final childDocRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.childId);
+
+      // Batch delete
+      final batch = FirebaseFirestore.instance.batch();
+
+      for (String id in ids) {
+        final docRef = dailyWeightsCollection.doc(id);
+        batch.delete(docRef);
+      }
+
+      await batch.commit();
+
+      // *** NEW: Reassign day numbers chronologically after deletion ***
+      if (_child != null) {
+        await _childService.reassignDayNumbersChronologically(
+          widget.childId,
+          _child!.dateOfBirth,
+        );
+        debugPrint('Reassigned day numbers after deletion');
+      }
+
+      // Update current weight to the latest chronological entry
+      await _childService.updateCurrentWeightToLatest(widget.childId);
+
+      // Reload data in UI to reflect the changes
+      await _loadChildData();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted ${ids.length} weight entries and updated day numbers.',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete weights: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  } */
+
+  Future<void> _deleteSelectedWeights(List<String> ids) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+      final dailyWeightsCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('dailyWeights');
+
+      // Step 1: Delete documents
+      final batch = FirebaseFirestore.instance.batch();
+      for (String id in ids) {
+        final docRef = dailyWeightsCollection.doc(id);
+        batch.delete(docRef);
+      }
+      await batch.commit();
+
+      debugPrint('Deleted ${ids.length} weight documents');
+
+      // Step 2: Reassign day numbers chronologically
+      if (_child != null) {
+        await _childService.reassignDayNumbersChronologically(
+          widget.childId,
+          _child!.dateOfBirth,
+        );
+        debugPrint('Reassigned day numbers after deletion');
+      }
+
+      // Step 3: Update current weight to latest
+      await _childService.updateCurrentWeightToLatest(widget.childId);
+
+      // Step 4: Force immediate UI refresh
+      await _forceUIRefreshAfterDeletion();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted ${ids.length} weight entries and updated day numbers.',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete weights: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Widget _buildBottomNavBar() {
@@ -3621,6 +3908,132 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         ),
       ),
     );
+  }
+
+  //Weights in chronological order
+  Future<void> _reassignDayNumbersChronologically() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+      final dailyWeightsCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('dailyWeights');
+
+      // Get all weight documents
+      final snapshot = await dailyWeightsCollection.get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      // Create a list of documents with their dates
+      List<Map<String, dynamic>> documentsWithDates = [];
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final date = (data['date'] as Timestamp).toDate();
+        documentsWithDates.add({
+          'docId': doc.id,
+          'date': normalizeDate(date),
+          'weight': data['weight'],
+          'originalDayNumber': data['dayNumber'],
+        });
+      }
+
+      // Sort by date (chronological order)
+      documentsWithDates.sort(
+        (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+      );
+
+      // Batch update to reassign day numbers
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Start from day 2 (day 1 is always birth date)
+      int newDayNumber = 2;
+
+      for (var docData in documentsWithDates) {
+        final docRef = dailyWeightsCollection.doc(docData['docId']);
+
+        // Check if this is birth date
+        final docDate = docData['date'] as DateTime;
+        final birthDate = normalizeDate(_child!.dateOfBirth);
+
+        if (docDate.isAtSameMomentAs(birthDate)) {
+          // This is birth date, should be day 1
+          batch.update(docRef, {'dayNumber': 1});
+        } else {
+          // Regular date, assign chronological day number
+          batch.update(docRef, {'dayNumber': newDayNumber});
+          newDayNumber++;
+        }
+      }
+
+      // Commit the batch update
+      await batch.commit();
+
+      print('Successfully reassigned day numbers chronologically');
+    } catch (e) {
+      print('Error reassigning day numbers: $e');
+      throw e;
+    }
+  }
+
+  // Helper method to update current weight to the latest chronological entry
+  Future<void> _updateCurrentWeightToLatest() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+      final dailyWeightsCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('dailyWeights');
+
+      // Get the latest weight entry by date
+      final latestSnapshot =
+          await dailyWeightsCollection
+              .orderBy('date', descending: true)
+              .limit(1)
+              .get();
+
+      if (latestSnapshot.docs.isNotEmpty) {
+        final latestWeight =
+            latestSnapshot.docs.first.data()['weight'] as double;
+
+        await _childService.updateChild(widget.childId, {
+          'currentWeight': latestWeight,
+        });
+      }
+    } catch (e) {
+      print('Error updating current weight: $e');
+    }
+  }
+
+  // Add this as a new method
+  Future<void> _forceUIRefreshAfterDeletion() async {
+    try {
+      // Clear current data
+      setState(() {
+        dayData.clear();
+        dateToDayMap.clear();
+        dayToDateMap.clear();
+        weightData.clear();
+        weightCategoryData.clear();
+        _lastDayNumber = 0;
+        selectedDay = 1;
+      });
+
+      // Force reload child data
+      await _loadChildData();
+
+      // Reload WHO standards if needed
+      if (!_isLoadingStandards && _whoStandardLines.isEmpty) {
+        _isLoadingStandards = true;
+        _loadWHOStandardLines();
+      }
+    } catch (e) {
+      debugPrint('Error forcing UI refresh: $e');
+    }
   }
 }
 
