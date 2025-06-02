@@ -1473,19 +1473,19 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         final category = dayData[dayNumber]!['category'];
         switch (category) {
           case 'minus3SD': // Severely Underweight
-            spotColor = Colors.red;
+            spotColor = Colors.red.shade600;
             break;
           case 'minus2SD': // Underweight
-            spotColor = Colors.orange;
+            spotColor = Colors.orange.shade600;
             break;
           case 'normal': // Normal
-            spotColor = Colors.green;
+            spotColor = Colors.green.shade600;
             break;
           case 'plus2SD': // Overweight
-            spotColor = Colors.orange;
+            spotColor = Colors.orange.shade600;
             break;
           case 'plus3SD': // Severely Overweight
-            spotColor = Colors.red;
+            spotColor = Colors.red.shade600;
             break;
           default:
             spotColor = const Color(0xFF1873EA);
