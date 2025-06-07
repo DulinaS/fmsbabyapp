@@ -31,111 +31,111 @@ class GrowthStandardService {
 
     // Data structure with ranges for different ages
     // We'll store the thresholds for different SD lines (-3SD, -2SD, median, +1SD, +2SD, +3SD)
-    // Values are in grams, derived from the WHO growth standards charts
+    // Values are in kg, derived from the WHO growth standards charts
     final girlWeightRanges = {
       // Monthly data for the first year (simplified to key milestones)
       'months': {
         '0': {
           // Birth
-          'minus3SD': 2000,
-          'minus2SD': 2400,
-          'median': 3200,
-          'plus1SD': 3600,
-          'plus2SD': 4200,
-          'plus3SD': 4800,
+          'minus3SD': 2.0,
+          'minus2SD': 2.4,
+          'median': 3.2,
+          'plus1SD': 3.6,
+          'plus2SD': 4.2,
+          'plus3SD': 4.8,
         },
         '1': {
-          'minus3SD': 2700,
-          'minus2SD': 3200,
-          'median': 4300,
-          'plus1SD': 4700,
-          'plus2SD': 5400,
-          'plus3SD': 6000,
+          'minus3SD': 2.7,
+          'minus2SD': 3.2,
+          'median': 4.3,
+          'plus1SD': 4.7,
+          'plus2SD': 5.4,
+          'plus3SD': 6.0,
         },
         '2': {
-          'minus3SD': 3400,
-          'minus2SD': 3900,
-          'median': 5100,
-          'plus1SD': 5700,
-          'plus2SD': 6300,
-          'plus3SD': 7000,
+          'minus3SD': 3.4,
+          'minus2SD': 3.9,
+          'median': 5.1,
+          'plus1SD': 5.7,
+          'plus2SD': 6.3,
+          'plus3SD': 7.0,
         },
         '3': {
-          'minus3SD': 3900,
-          'minus2SD': 4500,
-          'median': 5800,
-          'plus1SD': 6400,
-          'plus2SD': 7000,
-          'plus3SD': 7900,
+          'minus3SD': 3.9,
+          'minus2SD': 4.5,
+          'median': 5.8,
+          'plus1SD': 6.4,
+          'plus2SD': 7.0,
+          'plus3SD': 7.9,
         },
         '6': {
-          'minus3SD': 5000,
-          'minus2SD': 5700,
-          'median': 7200,
-          'plus1SD': 7900,
-          'plus2SD': 8700,
-          'plus3SD': 9800,
+          'minus3SD': 5.0,
+          'minus2SD': 5.7,
+          'median': 7.2,
+          'plus1SD': 7.9,
+          'plus2SD': 8.7,
+          'plus3SD': 9.8,
         },
         '9': {
-          'minus3SD': 5900,
-          'minus2SD': 6700,
-          'median': 8200,
-          'plus1SD': 9100,
-          'plus2SD': 10000,
-          'plus3SD': 11200,
+          'minus3SD': 5.9,
+          'minus2SD': 6.7,
+          'median': 8.2,
+          'plus1SD': 9.1,
+          'plus2SD': 10.0,
+          'plus3SD': 11.2,
         },
         '12': {
           // 1 year
-          'minus3SD': 6300,
-          'minus2SD': 7200,
-          'median': 8900,
-          'plus1SD': 9900,
-          'plus2SD': 11000,
-          'plus3SD': 12300,
+          'minus3SD': 6.3,
+          'minus2SD': 7.2,
+          'median': 8.9,
+          'plus1SD': 9.9,
+          'plus2SD': 11.0,
+          'plus3SD': 12.3,
         },
       },
       // Yearly data after first year
       'years': {
         '1': {
           // Same as month 12
-          'minus3SD': 6300,
-          'minus2SD': 7200,
-          'median': 8900,
-          'plus1SD': 9900,
-          'plus2SD': 11000,
-          'plus3SD': 12300,
+          'minus3SD': 6.3,
+          'minus2SD': 7.2,
+          'median': 8.9,
+          'plus1SD': 9.9,
+          'plus2SD': 11.0,
+          'plus3SD': 12.3,
         },
         '2': {
-          'minus3SD': 8200,
-          'minus2SD': 9200,
-          'median': 11500,
-          'plus1SD': 12800,
-          'plus2SD': 14300,
-          'plus3SD': 16000,
+          'minus3SD': 8.2,
+          'minus2SD': 9.2,
+          'median': 11.5,
+          'plus1SD': 12.8,
+          'plus2SD': 14.3,
+          'plus3SD': 16.0,
         },
         '3': {
-          'minus3SD': 9600,
-          'minus2SD': 10800,
-          'median': 13900,
-          'plus1SD': 15500,
-          'plus2SD': 17300,
-          'plus3SD': 19500,
+          'minus3SD': 9.6,
+          'minus2SD': 10.8,
+          'median': 13.9,
+          'plus1SD': 15.5,
+          'plus2SD': 17.3,
+          'plus3SD': 19.5,
         },
         '4': {
-          'minus3SD': 11000,
-          'minus2SD': 12200,
-          'median': 16300,
-          'plus1SD': 18200,
-          'plus2SD': 20400,
-          'plus3SD': 23000,
+          'minus3SD': 11.0,
+          'minus2SD': 12.2,
+          'median': 16.3,
+          'plus1SD': 18.2,
+          'plus2SD': 20.4,
+          'plus3SD': 23.0,
         },
         '5': {
-          'minus3SD': 12200,
-          'minus2SD': 13600,
-          'median': 18200,
-          'plus1SD': 20500,
-          'plus2SD': 23500,
-          'plus3SD': 27000,
+          'minus3SD': 12.2,
+          'minus2SD': 13.6,
+          'median': 18.2,
+          'plus1SD': 20.5,
+          'plus2SD': 23.5,
+          'plus3SD': 27.0,
         },
       },
       'categories': {
@@ -184,111 +184,111 @@ class GrowthStandardService {
 
     // Data structure with ranges for different ages
     // We'll store the thresholds for different SD lines (-3SD, -2SD, median, +1SD, +2SD, +3SD)
-    // Values are in grams, derived from the WHO growth standards charts
+    // Values are in kg, derived from the WHO growth standards charts
     final boyWeightRanges = {
       // Monthly data for the first year (simplified to key milestones)
       'months': {
         '0': {
           // Birth
-          'minus3SD': 2200,
-          'minus2SD': 2500,
-          'median': 3300,
-          'plus1SD': 3900,
-          'plus2SD': 4500,
-          'plus3SD': 5000,
+          'minus3SD': 2.2,
+          'minus2SD': 2.5,
+          'median': 3.3,
+          'plus1SD': 3.9,
+          'plus2SD': 4.5,
+          'plus3SD': 5.0,
         },
         '1': {
-          'minus3SD': 3000,
-          'minus2SD': 3600,
-          'median': 4500,
-          'plus1SD': 5100,
-          'plus2SD': 5800,
-          'plus3SD': 6500,
+          'minus3SD': 3.0,
+          'minus2SD': 3.6,
+          'median': 4.5,
+          'plus1SD': 5.1,
+          'plus2SD': 5.8,
+          'plus3SD': 6.5,
         },
         '2': {
-          'minus3SD': 3800,
-          'minus2SD': 4500,
-          'median': 5600,
-          'plus1SD': 6300,
-          'plus2SD': 7000,
-          'plus3SD': 7800,
+          'minus3SD': 3.8,
+          'minus2SD': 4.5,
+          'median': 5.6,
+          'plus1SD': 6.3,
+          'plus2SD': 7.0,
+          'plus3SD': 7.8,
         },
         '3': {
-          'minus3SD': 4500,
-          'minus2SD': 5100,
-          'median': 6400,
-          'plus1SD': 7200,
-          'plus2SD': 8000,
-          'plus3SD': 8900,
+          'minus3SD': 4.5,
+          'minus2SD': 5.1,
+          'median': 6.4,
+          'plus1SD': 7.2,
+          'plus2SD': 8.0,
+          'plus3SD': 8.9,
         },
         '6': {
-          'minus3SD': 5700,
-          'minus2SD': 6400,
-          'median': 7900,
-          'plus1SD': 8800,
-          'plus2SD': 9800,
-          'plus3SD': 10900,
+          'minus3SD': 5.7,
+          'minus2SD': 6.4,
+          'median': 7.9,
+          'plus1SD': 8.8,
+          'plus2SD': 9.8,
+          'plus3SD': 10.9,
         },
         '9': {
-          'minus3SD': 6600,
-          'minus2SD': 7400,
-          'median': 8900,
-          'plus1SD': 10000,
-          'plus2SD': 11000,
-          'plus3SD': 12300,
+          'minus3SD': 6.6,
+          'minus2SD': 7.4,
+          'median': 8.9,
+          'plus1SD': 10.0,
+          'plus2SD': 11.0,
+          'plus3SD': 12.3,
         },
         '12': {
           // 1 year
-          'minus3SD': 7000,
-          'minus2SD': 7900,
-          'median': 9600,
-          'plus1SD': 10800,
-          'plus2SD': 12000,
-          'plus3SD': 13500,
+          'minus3SD': 7.0,
+          'minus2SD': 7.9,
+          'median': 9.6,
+          'plus1SD': 10.8,
+          'plus2SD': 12.0,
+          'plus3SD': 13.5,
         },
       },
       // Yearly data after first year
       'years': {
         '1': {
           // Same as month 12
-          'minus3SD': 7000,
-          'minus2SD': 7900,
-          'median': 9600,
-          'plus1SD': 10800,
-          'plus2SD': 12000,
-          'plus3SD': 13500,
+          'minus3SD': 7.0,
+          'minus2SD': 7.9,
+          'median': 9.6,
+          'plus1SD': 10.8,
+          'plus2SD': 12.0,
+          'plus3SD': 13.5,
         },
         '2': {
-          'minus3SD': 8800,
-          'minus2SD': 9800,
-          'median': 12200,
-          'plus1SD': 13700,
-          'plus2SD': 15400,
-          'plus3SD': 17200,
+          'minus3SD': 8.8,
+          'minus2SD': 9.8,
+          'median': 12.2,
+          'plus1SD': 13.7,
+          'plus2SD': 15.4,
+          'plus3SD': 17.2,
         },
         '3': {
-          'minus3SD': 10200,
-          'minus2SD': 11500,
-          'median': 14300,
-          'plus1SD': 16200,
-          'plus2SD': 18200,
-          'plus3SD': 20500,
+          'minus3SD': 10.2,
+          'minus2SD': 11.5,
+          'median': 14.3,
+          'plus1SD': 16.2,
+          'plus2SD': 18.2,
+          'plus3SD': 20.5,
         },
         '4': {
-          'minus3SD': 11500,
-          'minus2SD': 12900,
-          'median': 16300,
-          'plus1SD': 18500,
-          'plus2SD': 21000,
-          'plus3SD': 24000,
+          'minus3SD': 11.5,
+          'minus2SD': 12.9,
+          'median': 16.3,
+          'plus1SD': 18.5,
+          'plus2SD': 21.0,
+          'plus3SD': 24.0,
         },
         '5': {
-          'minus3SD': 12700,
-          'minus2SD': 14300,
-          'median': 18400,
-          'plus1SD': 21000,
-          'plus2SD': 24000,
-          'plus3SD': 27500,
+          'minus3SD': 12.7,
+          'minus2SD': 14.3,
+          'median': 18.4,
+          'plus1SD': 21.0,
+          'plus2SD': 24.0,
+          'plus3SD': 27.5,
         },
       },
       'categories': {
@@ -330,7 +330,7 @@ class GrowthStandardService {
 
   // Function to determine a baby's weight category based on age, weight, and gender
   Future<Map<String, dynamic>> determineWeightCategory(
-    double weightInGrams,
+    double weightInKg, // Changed parameter name and comment
     DateTime dateOfBirth,
     DateTime measurementDate,
     String gender,
@@ -380,15 +380,15 @@ class GrowthStandardService {
       // Get range values for this age
       final Map<String, dynamic> rangeValues = data[collection][ageKey];
 
-      // Determine weight category
+      // Determine weight category - now comparing kg to kg values
       String category;
-      if (weightInGrams < rangeValues['minus3SD']) {
+      if (weightInKg < rangeValues['minus3SD']) {
         category = 'minus3SD';
-      } else if (weightInGrams < rangeValues['minus2SD']) {
+      } else if (weightInKg < rangeValues['minus2SD']) {
         category = 'minus2SD';
-      } else if (weightInGrams < rangeValues['plus2SD']) {
+      } else if (weightInKg < rangeValues['plus2SD']) {
         category = 'normal';
-      } else if (weightInGrams < rangeValues['plus3SD']) {
+      } else if (weightInKg < rangeValues['plus3SD']) {
         category = 'plus2SD';
       } else {
         category = 'plus3SD';
@@ -399,7 +399,7 @@ class GrowthStandardService {
         'category': category,
         'info': categories[category],
         'ranges': rangeValues,
-        'actualWeight': weightInGrams,
+        'actualWeight': weightInKg, // Changed variable name
         'ageInMonths': ageInMonths,
         'ageInYears': ageInYears,
         'ageKey': ageKey,
@@ -415,7 +415,7 @@ class GrowthStandardService {
           'color': '#808080', // Gray
           'message': 'Could not determine weight category. Please try again.',
         },
-        'actualWeight': weightInGrams,
+        'actualWeight': weightInKg, // Changed variable name
       };
     }
   }
@@ -502,11 +502,13 @@ class GrowthStandardService {
         // Calculate actual date for this age
         final measurementDate = birthDate.add(Duration(days: dayNum));
 
-        // Add data points for each line
+        // Add data points for each line - values are already in kg
         for (final type in lineTypes) {
           result[type]!.add({
             'x': dayNum.toDouble(),
-            'y': rangeValues[type].toDouble(),
+            'y':
+                rangeValues[type]
+                    .toDouble(), // Already in kg, no conversion needed
             'date': measurementDate,
           });
         }

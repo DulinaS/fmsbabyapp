@@ -128,9 +128,8 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       standardLinesData.forEach((key, pointList) {
         lines[key] =
             pointList.map((point) {
-              // Convert to FlSpot with x as days since birth and y as weight
-              // Always convert weight to kg for the chart
-              double yValue = (point['y'] as double) / 1000;
+              // Always weight in kg for the chart
+              double yValue = point['y'] as double;
               return FlSpot(point['x'] as double, yValue);
             }).toList();
       });
@@ -287,21 +286,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
-  // Convert grams to kg for display
-  String gramsToDisplayWeight(double weightInGrams) {
-    return _isKgUnit
-        ? '${(weightInGrams / 1000).toStringAsFixed(2)} kg'
-        : '${weightInGrams.toInt()} grams';
-  }
-
-  // Extract numeric value from weight display string
-  double extractWeightValue(String weightDisplayString) {
-    final numericPart =
-        RegExp(r'[0-9]+\.?[0-9]*').firstMatch(weightDisplayString)?.group(0) ??
-        '0';
-    return double.tryParse(numericPart) ?? 0;
-  }
-
   // Convert DateTime to string key for mapping (yyyy-MM-dd format)
   String dateToKey(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
@@ -324,7 +308,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
 
   // Determine weight category and status message
   Future<Map<String, dynamic>> determineWeightCategory(
-    double weightInGrams,
+    double weightInKg,
     DateTime dateOfBirth,
     DateTime measurementDate,
     String gender,
@@ -352,7 +336,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
             'message':
                 'Weight appears to be in normal range. Standards data missing.',
           },
-          'actualWeight': weightInGrams,
+          'actualWeight': weightInKg,
         };
       }
 
@@ -386,13 +370,13 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
 
       // Determine weight category
       String category;
-      if (weightInGrams < rangeValues['minus3SD']) {
+      if (weightInKg < rangeValues['minus3SD']) {
         category = 'minus3SD';
-      } else if (weightInGrams < rangeValues['minus2SD']) {
+      } else if (weightInKg < rangeValues['minus2SD']) {
         category = 'minus2SD';
-      } else if (weightInGrams < rangeValues['plus2SD']) {
+      } else if (weightInKg < rangeValues['plus2SD']) {
         category = 'normal';
-      } else if (weightInGrams < rangeValues['plus3SD']) {
+      } else if (weightInKg < rangeValues['plus3SD']) {
         category = 'plus2SD';
       } else {
         category = 'plus3SD';
@@ -403,7 +387,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         'category': category,
         'info': categories[category],
         'ranges': rangeValues,
-        'actualWeight': weightInGrams,
+        'actualWeight': weightInKg,
         'ageKey': ageKey,
         'collection': collection,
       };
@@ -417,7 +401,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
           'color': '#808080', // Gray
           'message': 'Could not determine weight category. Please try again.',
         },
-        'actualWeight': weightInGrams,
+        'actualWeight': weightInKg,
       };
     }
   }
@@ -466,7 +450,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
             newWeightCategoryData[1] = weightCategory;
 
             newDayData[1] = {
-              'weight': gramsToDisplayWeight(_child!.weight!),
+              'weight': '${_child!.weight!.toStringAsFixed(2)} kg',
               'height': _child?.height?.toString() ?? 'No data',
               'circumference':
                   _child?.headCircumference?.toString() ?? 'No data',
@@ -514,7 +498,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
               newWeightCategoryData[1] = weightCategory;
 
               newDayData[1] = {
-                'weight': gramsToDisplayWeight(weight),
+                'weight': '${_child!.weight!.toStringAsFixed(2)} kg',
                 'height': _child?.height?.toString() ?? 'No data',
                 'circumference':
                     _child?.headCircumference?.toString() ?? 'No data',
@@ -544,7 +528,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
             newWeightCategoryData[dayNumber] = weightCategory;
 
             newDayData[dayNumber] = {
-              'weight': gramsToDisplayWeight(weight),
+              'weight': '${_child!.weight!.toStringAsFixed(2)} kg',
               'height': _child?.height?.toString() ?? 'No data',
               'circumference':
                   _child?.headCircumference?.toString() ?? 'No data',
@@ -672,28 +656,12 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
           // Update weight field with existing data
           if (dayData.containsKey(existingDay)) {
             String weightStr = dayData[existingDay]!['weight'];
-            double weightValue = extractWeightValue(weightStr);
+            // Extract numeric value from weight string (e.g., "3.25 kg" -> 3.25)
+            double weightValue =
+                double.tryParse(weightStr.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                0.0;
 
-            // Convert to appropriate unit for display in the text field
-            if (_isKgUnit) {
-              // If weight stored in grams but display in kg
-              if (weightStr.contains('grams')) {
-                _weightController.text = (weightValue / 1000).toStringAsFixed(
-                  2,
-                );
-              } else {
-                _weightController.text = weightValue.toStringAsFixed(2);
-              }
-            } else {
-              // If weight stored in kg but display in grams
-              if (weightStr.contains('kg')) {
-                _weightController.text = (weightValue * 1000).toStringAsFixed(
-                  0,
-                );
-              } else {
-                _weightController.text = weightValue.toStringAsFixed(0);
-              }
-            }
+            _weightController.text = weightValue.toStringAsFixed(2);
 
             // Update status message for this day
             _weightStatusMessage = dayData[existingDay]!['message'];
@@ -762,13 +730,10 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
 
     try {
       // Parse weight as double
-      double weightValue = double.tryParse(weightInput) ?? 0;
-      if (weightValue <= 0) {
+      double weightInKg = double.tryParse(weightInput) ?? 0;
+      if (weightInKg <= 0) {
         throw Exception('Weight must be greater than zero');
       }
-
-      // Convert kg to grams for storage if using kg
-      double weightInGrams = _isKgUnit ? weightValue * 1000 : weightValue;
 
       if (_child == null) {
         throw Exception('Child data not loaded');
@@ -788,7 +753,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
 
       // Get the weight category for this measurement (before saving)
       final weightCategory = await determineWeightCategory(
-        weightInGrams,
+        weightInKg,
         _child!.dateOfBirth,
         normalizedSelectedDate,
         _child!.gender,
@@ -830,7 +795,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         await _childService.updateDailyWeight(
           widget.childId,
           existingDocId,
-          weight: weightInGrams,
+          weight: weightInKg,
         );
 
         debugPrint(
@@ -844,7 +809,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
           widget.childId,
           dayNumber: 999, // Temporary day number
           date: normalizedSelectedDate,
-          weight: weightInGrams,
+          weight: weightInKg,
         );
 
         debugPrint('Added new weight entry for date: $normalizedSelectedDate');
@@ -859,9 +824,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       final birthDate = normalizeDate(_child!.dateOfBirth);
       if (normalizedSelectedDate.isAtSameMomentAs(birthDate)) {
         // Also update the child's birth weight
-        await _childService.updateChild(widget.childId, {
-          'weight': weightInGrams,
-        });
+        await _childService.updateChild(widget.childId, {'weight': weightInKg});
       }
 
       // Update current weight to the weight from the latest chronological date
@@ -1016,7 +979,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
-  Widget _buildDaysScroller() {
+  /*   Widget _buildDaysScroller() {
     return Container(
       height: 80, // Increased height for date display
       child:
@@ -1249,6 +1212,200 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
               ),
     );
   }
+ */
+
+  Widget _buildDaysScroller() {
+    return Container(
+      height: 80,
+      child:
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : ListView.builder(
+                controller: _daysScrollController,
+                scrollDirection: Axis.horizontal,
+                itemCount: _lastDayNumber + 5,
+                itemBuilder: (context, index) {
+                  final dayNumber = index + 1;
+                  final isSelected = dayNumber == selectedDay;
+                  final hasData = dayData.containsKey(dayNumber);
+
+                  return Padding(
+                    padding: EdgeInsets.only(right: 10),
+                    child: InkWell(
+                      onTap: () => _handleDaySelection(dayNumber),
+                      child: Container(
+                        width: 90,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 35,
+                              height: 35,
+                              decoration: ShapeDecoration(
+                                color: _getDayCircleColor(
+                                  dayNumber,
+                                  isSelected,
+                                  hasData,
+                                ),
+                                shape: OvalBorder(),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  dayNumber.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color:
+                                        isSelected || hasData
+                                            ? Colors.white
+                                            : const Color(0xFF8C8A8A),
+                                    fontSize: 12,
+                                    fontFamily: 'Nunito',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              _getDayDateString(dayNumber, isSelected),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color:
+                                    isSelected
+                                        ? const Color(0xFF1873EA)
+                                        : Colors.black87,
+                                fontSize: 11,
+                                fontFamily: 'Nunito',
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+    );
+  }
+
+  // Helper method to get the circle color for a day
+  Color _getDayCircleColor(int dayNumber, bool isSelected, bool hasData) {
+    if (isSelected) {
+      return const Color(0xFF1873EA); // Blue for selected day
+    } else if (hasData) {
+      // Use the weight category color if available
+      if (dayData[dayNumber]?.containsKey('color') ?? false) {
+        return hexToColor(dayData[dayNumber]!['color']);
+      } else {
+        return Colors.green; // Default for days with data
+      }
+    } else {
+      return const Color(0x7FD9D9D9); // Gray for future days
+    }
+  }
+
+  // Helper method to get the date string for a day
+  String _getDayDateString(int dayNumber, bool isSelected) {
+    if (dayToDateMap.containsKey(dayNumber)) {
+      // Existing day with data
+      return DateFormat('d MMM').format(dayToDateMap[dayNumber]!);
+    } else if (isSelected) {
+      // Selected day (might be new)
+      return DateFormat('d MMM').format(_selectedDate);
+    } else {
+      // Empty day
+      return 'Select';
+    }
+  }
+
+  // Main handler for day selection - fixes the logic issues
+  void _handleDaySelection(int dayNumber) {
+    setState(() {
+      selectedDay = dayNumber;
+
+      if (dayData.containsKey(dayNumber)) {
+        // Load existing data for this day
+        _loadExistingDayData(dayNumber);
+      } else {
+        // Handle new day selection
+        _handleNewDaySelection(dayNumber);
+      }
+    });
+  }
+
+  // Load existing data for a selected day
+  void _loadExistingDayData(int dayNumber) {
+    final data = dayData[dayNumber]!;
+    String weightStr = data['weight'];
+
+    // Extract numeric value from weight string (e.g., "3.25 kg" -> 3.25)
+    double weightValue =
+        double.tryParse(weightStr.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+
+    _weightController.text = weightValue.toStringAsFixed(2);
+    _selectedDate = data['date'] as DateTime;
+    _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+    _weightStatusMessage = data['message'];
+    _weightStatusColor = hexToColor(data['color']);
+  }
+
+  // Handle selection of a new day (no existing data)
+  void _handleNewDaySelection(int dayNumber) {
+    // Clear weight input for new entry
+    _weightController.text = '';
+    _weightStatusMessage = null;
+    _weightStatusColor = Colors.grey;
+
+    // Set appropriate date for new day
+    if (dayNumber == 1 && _child != null) {
+      _selectedDate = _child!.dateOfBirth;
+    } else {
+      _selectedDate = DateTime.now();
+    }
+
+    _dateController.text = DateFormat('dd/MM/yyyy').format(_selectedDate);
+
+    // Check if this date already has data assigned to a different day
+    _checkForExistingDateData();
+  }
+
+  // Check if the selected date already has data assigned to another day
+  void _checkForExistingDateData() {
+    final dateKey = dateToKey(normalizeDate(_selectedDate));
+
+    if (dateToDayMap.containsKey(dateKey)) {
+      final existingDay = dateToDayMap[dateKey]!;
+
+      // Switch to the existing day instead
+      selectedDay = existingDay;
+
+      // Load the existing data
+      if (dayData.containsKey(existingDay)) {
+        _loadExistingDayData(existingDay);
+      }
+
+      // Inform user about the switch
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "This date already has a weight entry (Day $existingDay). You can update it.",
+              ),
+              backgroundColor: Colors.blue,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      });
+    }
+  }
 
   Widget _buildBabyImage() {
     return Hero(
@@ -1462,7 +1619,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       final date = dayToDateMap[dayNumber]!;
       final birthDate = _child!.dateOfBirth;
       final daysSinceBirth = date.difference(birthDate).inDays;
-      final weightValue = entry.value / 1000;
+      final weightValue = entry.value;
 
       spots.add(FlSpot(daysSinceBirth.toDouble(), weightValue));
 
@@ -2320,64 +2477,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                     ),
                   ),
                 ),
-                // Unit toggle switch
-                Row(
-                  children: [
-                    Text(
-                      "grams",
-                      style: TextStyle(
-                        color: !_isKgUnit ? Colors.black : Colors.grey,
-                        fontSize: 12,
-                        fontWeight:
-                            !_isKgUnit ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                    ),
-                    Switch(
-                      value: _isKgUnit,
-                      activeColor: Color(0xFF1873EA),
-                      onChanged: (value) {
-                        setState(() {
-                          _isKgUnit = value;
-
-                          // Convert text field value if it's not empty
-                          if (_weightController.text.isNotEmpty) {
-                            try {
-                              double currentValue = double.parse(
-                                _weightController.text,
-                              );
-                              if (value) {
-                                // Switching to kg
-                                _weightController.text = (currentValue / 1000)
-                                    .toStringAsFixed(2);
-                              } else {
-                                // Switching to grams
-                                _weightController.text = (currentValue * 1000)
-                                    .toStringAsFixed(0);
-                              }
-                            } catch (e) {
-                              // Just clear the field if conversion fails
-                              _weightController.text = '';
-                            }
-                          }
-                          // Reload WHO standard lines with new unit
-                          if (_whoStandardLines.isNotEmpty) {
-                            _isLoadingStandards = true;
-                            _loadWHOStandardLines();
-                          }
-                        });
-                      },
-                    ),
-                    Text(
-                      "kg",
-                      style: TextStyle(
-                        color: _isKgUnit ? Colors.black : Colors.grey,
-                        fontSize: 12,
-                        fontWeight:
-                            _isKgUnit ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
             SizedBox(height: 8),
@@ -2385,10 +2484,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
               controller: _weightController,
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                hintText:
-                    _isKgUnit
-                        ? "Enter baby's weight in kg"
-                        : "Enter baby's weight in grams",
+                hintText: "Enter baby's weight in kg",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -2396,7 +2492,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                   horizontal: 12,
                   vertical: 8,
                 ),
-                suffixText: _isKgUnit ? "kg" : "g",
+                suffixText: "kg",
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -2415,16 +2511,8 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                 }
 
                 // Check for unrealistic values based on unit
-                if (_isKgUnit) {
-                  // For kg, 20kg is a reasonable upper limit for babies/infants
-                  if (weight > 20) {
-                    return 'Weight seems too high';
-                  }
-                } else {
-                  // For grams, 20,000g (20kg) is a reasonable upper limit
-                  if (weight > 20000) {
-                    return 'Weight seems too high';
-                  }
+                if (weight > 20) {
+                  return 'Weight seems too high';
                 }
 
                 return null;
