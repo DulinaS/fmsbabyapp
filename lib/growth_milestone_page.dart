@@ -979,241 +979,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
-  /*   Widget _buildDaysScroller() {
-    return Container(
-      height: 80, // Increased height for date display
-      child:
-          _isLoading
-              ? Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                controller: _daysScrollController,
-                scrollDirection: Axis.horizontal,
-                itemCount:
-                    _lastDayNumber + 5, // Show a few extra days for new entries
-                itemBuilder: (context, index) {
-                  final dayNumber = index + 1;
-                  final isSelected = dayNumber == selectedDay;
-                  final hasData = dayData.containsKey(dayNumber);
-
-                  // Get date for this day
-                  String dateStr;
-                  if (dayToDateMap.containsKey(dayNumber)) {
-                    // Existing day with data
-                    dateStr = DateFormat(
-                      'd MMM',
-                    ).format(dayToDateMap[dayNumber]!);
-                  } else if (isSelected) {
-                    // Selected day (might be new)
-                    dateStr = DateFormat('d MMM').format(_selectedDate);
-                  } else {
-                    // Empty day
-                    dateStr = 'Select';
-                  }
-
-                  // Determine circle color based on data
-                  Color circleColor;
-                  if (isSelected) {
-                    circleColor = const Color(
-                      0xFF1873EA,
-                    ); // Blue for selected day
-                  } else if (hasData) {
-                    // Use the weight category color if available
-                    if (dayData[dayNumber]?.containsKey('color') ?? false) {
-                      circleColor = hexToColor(dayData[dayNumber]!['color']);
-                    } else {
-                      circleColor = Colors.green; // Default for days with data
-                    }
-                  } else {
-                    circleColor = const Color(
-                      0x7FD9D9D9,
-                    ); // Gray for future days
-                  }
-
-                  return Padding(
-                    padding: EdgeInsets.only(right: 10),
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          selectedDay = dayNumber;
-
-                          // Update text fields when day changes
-                          if (dayData.containsKey(selectedDay)) {
-                            // Existing data
-                            String weightStr = dayData[selectedDay]!['weight'];
-                            double weightValue = extractWeightValue(weightStr);
-
-                            // Convert to appropriate unit for display in the text field
-                            if (_isKgUnit) {
-                              // If weight stored in grams but display in kg
-                              if (weightStr.contains('grams')) {
-                                _weightController.text = (weightValue / 1000)
-                                    .toStringAsFixed(2);
-                              } else {
-                                _weightController.text = weightValue
-                                    .toStringAsFixed(2);
-                              }
-                            } else {
-                              // If weight stored in kg but display in grams
-                              if (weightStr.contains('kg')) {
-                                _weightController.text = (weightValue * 1000)
-                                    .toStringAsFixed(0);
-                              } else {
-                                _weightController.text = weightValue
-                                    .toStringAsFixed(0);
-                              }
-                            }
-
-                            // Update date field
-                            _selectedDate =
-                                dayData[selectedDay]!['date'] as DateTime;
-                            _dateController.text = DateFormat(
-                              'dd/MM/yyyy',
-                            ).format(_selectedDate);
-
-                            // Update weight status message and color
-                            _weightStatusMessage =
-                                dayData[selectedDay]!['message'];
-                            _weightStatusColor = hexToColor(
-                              dayData[selectedDay]!['color'],
-                            );
-                          } else {
-                            // New entry
-                            _weightController.text = '';
-
-                            // For Day 1, use birth date, otherwise use today
-                            if (dayNumber == 1 && _child != null) {
-                              _selectedDate = _child!.dateOfBirth;
-                            } else {
-                              _selectedDate = DateTime.now();
-                            }
-                            _dateController.text = DateFormat(
-                              'dd/MM/yyyy',
-                            ).format(_selectedDate);
-
-                            // Clear status message for new entry
-                            _weightStatusMessage = null;
-                            _weightStatusColor = Colors.grey;
-
-                            // Check if selected date already has data
-                            final dateKey = dateToKey(
-                              normalizeDate(_selectedDate),
-                            );
-                            if (dateToDayMap.containsKey(dateKey)) {
-                              final existingDay = dateToDayMap[dateKey]!;
-
-                              // Switch to that day instead
-                              selectedDay = existingDay;
-
-                              // Update weight field with existing data
-                              if (dayData.containsKey(existingDay)) {
-                                String weightStr =
-                                    dayData[existingDay]!['weight'];
-                                double weightValue = extractWeightValue(
-                                  weightStr,
-                                );
-
-                                // Convert to appropriate unit for display in the text field
-                                if (_isKgUnit) {
-                                  // If weight stored in grams but display in kg
-                                  if (weightStr.contains('grams')) {
-                                    _weightController.text =
-                                        (weightValue / 1000).toStringAsFixed(2);
-                                  } else {
-                                    _weightController.text = weightValue
-                                        .toStringAsFixed(2);
-                                  }
-                                } else {
-                                  // If weight stored in kg but display in grams
-                                  if (weightStr.contains('kg')) {
-                                    _weightController.text =
-                                        (weightValue * 1000).toStringAsFixed(0);
-                                  } else {
-                                    _weightController.text = weightValue
-                                        .toStringAsFixed(0);
-                                  }
-                                }
-
-                                // Update weight status message and color
-                                _weightStatusMessage =
-                                    dayData[existingDay]!['message'];
-                                _weightStatusColor = hexToColor(
-                                  dayData[existingDay]!['color'],
-                                );
-                              }
-
-                              // Inform user
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      "This date already has a weight entry (Day $existingDay). You can update it.",
-                                    ),
-                                    backgroundColor: Colors.blue,
-                                  ),
-                                );
-                              });
-                            }
-                          }
-                        });
-                      },
-                      child: Container(
-                        width: 90, // Increased width for date display
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 35,
-                              height: 35,
-                              decoration: ShapeDecoration(
-                                color: circleColor,
-                                shape: OvalBorder(),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  dayNumber.toString(),
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color:
-                                        isSelected || hasData
-                                            ? Colors.white
-                                            : const Color(0xFF8C8A8A),
-                                    fontSize: 12,
-                                    fontFamily: 'Nunito',
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              dateStr,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color:
-                                    isSelected
-                                        ? const Color(0xFF1873EA)
-                                        : Colors.black87,
-                                fontSize: 11,
-                                fontFamily: 'Nunito',
-                                fontWeight:
-                                    isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-    );
-  }
- */
-
   Widget _buildDaysScroller() {
     return Container(
       height: 80,
@@ -1292,6 +1057,46 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                 },
               ),
     );
+  }
+
+  //Helper method for find the previous chronological weight entry
+  Map<String, dynamic>? _findPreviousWeightEntry(int currentDayNumber) {
+    // Get all entries sorted chronologically
+    List<MapEntry<int, double>> chronologicalEntries = [];
+
+    for (var entry in weightData.entries) {
+      if (dayToDateMap.containsKey(entry.key)) {
+        chronologicalEntries.add(entry);
+      }
+    }
+
+    // Sort by actual date (chronological order)
+    chronologicalEntries.sort((a, b) {
+      final dateA = dayToDateMap[a.key]!;
+      final dateB = dayToDateMap[b.key]!;
+      return dateA.compareTo(dateB);
+    });
+
+    // Find current entry index
+    int currentIndex = -1;
+    for (int i = 0; i < chronologicalEntries.length; i++) {
+      if (chronologicalEntries[i].key == currentDayNumber) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    // Return previous entry if exists
+    if (currentIndex > 0) {
+      final prevEntry = chronologicalEntries[currentIndex - 1];
+      return {
+        'dayNumber': prevEntry.key,
+        'weight': prevEntry.value,
+        'date': dayToDateMap[prevEntry.key]!,
+      };
+    }
+
+    return null; // No previous entry
   }
 
   // Helper method to get the circle color for a day
@@ -1966,7 +1771,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                         ), // Removed left padding
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
-                          child: Container(
+                          child: /* Container(
                             width: chartWidth,
                             height: 380, // Increased chart area height
                             child: LineChart(
@@ -2205,7 +2010,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                           }
                                         }
 
-                                        // Baby's data point
+                                        /* // Baby's data point
                                         int dayNumber = -1;
                                         for (var entry in sortedEntries) {
                                           final days =
@@ -2291,13 +2096,102 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                             fontSize: 14,
                                             height: 1.4,
                                           ),
-                                        );
+                                        ); */
+
+                                        // Baby's data point
+                                        int dayNumber = -1;
+                                        for (var entry in sortedEntries) {
+                                          final days =
+                                              dayToDateMap[entry.key]!
+                                                  .difference(
+                                                    _child!.dateOfBirth,
+                                                  )
+                                                  .inDays;
+                                          double weight =
+                                              entry
+                                                  .value; // Fixed: remove /1000 if it exists
+
+                                          if ((days.toDouble() - spot.x).abs() <
+                                                  0.1 &&
+                                              (weight - spot.y).abs() < 0.1) {
+                                            dayNumber = entry.key;
+                                            break;
+                                          }
+                                        }
+
+                                        if (dayNumber > 0) {
+                                          final date = dayToDateMap[dayNumber]!;
+                                          final dateStr = DateFormat(
+                                            'd MMM yyyy',
+                                          ).format(date);
+                                          final currentWeight = spot.y;
+
+                                          // Get comparison message
+                                          String comparisonMessage;
+                                          Color messageColor =
+                                              Colors.blue.shade700;
+
+                                          final previousEntry =
+                                              _findPreviousWeightEntry(
+                                                dayNumber,
+                                              );
+
+                                          if (previousEntry == null) {
+                                            // First weight entry
+                                            comparisonMessage =
+                                                "First weight entry";
+                                            messageColor = Colors.blue.shade700;
+                                          } else {
+                                            final prevWeight =
+                                                previousEntry['weight']
+                                                    as double;
+                                            final prevDate =
+                                                previousEntry['date']
+                                                    as DateTime;
+                                            final prevDateStr = DateFormat(
+                                              'd MMM yyyy',
+                                            ).format(prevDate);
+                                            final weightDiff =
+                                                currentWeight - prevWeight;
+
+                                            if (weightDiff > 0) {
+                                              comparisonMessage =
+                                                  "Weight increased by ${weightDiff.toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                              messageColor =
+                                                  Colors.green.shade700;
+                                            } else if (weightDiff < 0) {
+                                              comparisonMessage =
+                                                  "Weight decreased by ${(-weightDiff).toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                              messageColor =
+                                                  Colors.red.shade700;
+                                            } else {
+                                              comparisonMessage =
+                                                  "Weight maintained since $prevDateStr (${prevWeight.toStringAsFixed(1)}kg)";
+                                              messageColor =
+                                                  Colors.blue.shade700;
+                                            }
+                                          }
+
+                                          String weightText =
+                                              '${currentWeight.toStringAsFixed(1)} kg';
+
+                                          return LineTooltipItem(
+                                            '$dateStr\n$weightText\n$comparisonMessage',
+                                            TextStyle(
+                                              color: messageColor,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                              height: 1.4,
+                                            ),
+                                          );
+                                        }
                                       }).toList();
                                     },
                                   ),
                                   handleBuiltInTouches: true,
                                 ),
-                                lineBarsData: [
+
+                                /* lineBarsData: [
                                   // WHO standard lines
                                   if (_whoStandardLines.containsKey('minus3SD'))
                                     LineChartBarData(
@@ -2389,8 +2283,707 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                       ).withOpacity(0.1),
                                     ),
                                   ),
+                                ], */
+                                // REPLACE THE lineBarsData SECTION IN _buildGrowthChart()
+                                // Find the lineBarsData: [ section and replace it entirely with this:
+                                lineBarsData: [
+                                  // WHO REGION SHADOWS (Add these BEFORE the WHO standard lines)
+
+                                  // 1. RED REGION: Between Severe Underweight (-3SD) and Underweight (-2SD)
+                                  if (_whoStandardLines.containsKey(
+                                        'minus3SD',
+                                      ) &&
+                                      _whoStandardLines.containsKey('minus2SD'))
+                                    LineChartBarData(
+                                      spots:
+                                          _whoStandardLines['minus2SD']!, // Use upper boundary (minus2SD) as the line
+                                      isCurved: true,
+                                      color:
+                                          Colors.transparent, // Invisible line
+                                      barWidth: 0,
+                                      dotData: FlDotData(show: false),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        color: Colors.red.withOpacity(0.15),
+                                        cutOffY:
+                                            _whoStandardLines['minus3SD']!
+                                                    .isNotEmpty
+                                                ? _whoStandardLines['minus3SD']!
+                                                    .first
+                                                    .y
+                                                : 0, // Cut off at minus3SD line
+                                        applyCutOffY: true,
+                                      ),
+                                    ),
+
+                                  // 2. ORANGE REGION: Between Underweight (-2SD) and WHO Median
+                                  if (_whoStandardLines.containsKey(
+                                        'minus2SD',
+                                      ) &&
+                                      _whoStandardLines.containsKey('median'))
+                                    LineChartBarData(
+                                      spots:
+                                          _whoStandardLines['median']!, // Use upper boundary (median) as the line
+                                      isCurved: true,
+                                      color:
+                                          Colors.transparent, // Invisible line
+                                      barWidth: 0,
+                                      dotData: FlDotData(show: false),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        color: Colors.orange.withOpacity(0.15),
+                                        cutOffY:
+                                            _whoStandardLines['minus2SD']!
+                                                    .isNotEmpty
+                                                ? _whoStandardLines['minus2SD']!
+                                                    .first
+                                                    .y
+                                                : 0, // Cut off at minus2SD line
+                                        applyCutOffY: true,
+                                      ),
+                                    ),
+
+                                  // 3. ORANGE REGION: Between WHO Median and Overweight (+2SD)
+                                  if (_whoStandardLines.containsKey('median') &&
+                                      _whoStandardLines.containsKey('plus2SD'))
+                                    LineChartBarData(
+                                      spots:
+                                          _whoStandardLines['plus2SD']!, // Use upper boundary (plus2SD) as the line
+                                      isCurved: true,
+                                      color:
+                                          Colors.transparent, // Invisible line
+                                      barWidth: 0,
+                                      dotData: FlDotData(show: false),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        color: Colors.orange.withOpacity(0.15),
+                                        cutOffY:
+                                            _whoStandardLines['median']!
+                                                    .isNotEmpty
+                                                ? _whoStandardLines['median']!
+                                                    .first
+                                                    .y
+                                                : 0, // Cut off at median line
+                                        applyCutOffY: true,
+                                      ),
+                                    ),
+
+                                  // 4. RED REGION: Between Overweight (+2SD) and Severe Overweight (+3SD)
+                                  if (_whoStandardLines.containsKey(
+                                        'plus2SD',
+                                      ) &&
+                                      _whoStandardLines.containsKey('plus3SD'))
+                                    LineChartBarData(
+                                      spots:
+                                          _whoStandardLines['plus3SD']!, // Use upper boundary (plus3SD) as the line
+                                      isCurved: true,
+                                      color:
+                                          Colors.transparent, // Invisible line
+                                      barWidth: 0,
+                                      dotData: FlDotData(show: false),
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        color: Colors.red.withOpacity(0.15),
+                                        cutOffY:
+                                            _whoStandardLines['plus2SD']!
+                                                    .isNotEmpty
+                                                ? _whoStandardLines['plus2SD']!
+                                                    .first
+                                                    .y
+                                                : 0, // Cut off at plus2SD line
+                                        applyCutOffY: true,
+                                      ),
+                                    ),
+
+                                  // WHO STANDARD LINES (keep existing)
+                                  if (_whoStandardLines.containsKey('minus3SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['minus3SD']!,
+                                      isCurved: true,
+                                      color: Colors.red.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(
+                                        show: false,
+                                      ), // Remove any shadows from WHO lines
+                                    ),
+                                  if (_whoStandardLines.containsKey('minus2SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['minus2SD']!,
+                                      isCurved: true,
+                                      color: Colors.orange.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(
+                                        show: false,
+                                      ), // Remove any shadows from WHO lines
+                                    ),
+                                  if (_whoStandardLines.containsKey('median'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['median']!,
+                                      isCurved: true,
+                                      color: Colors.green,
+                                      barWidth: 2.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      belowBarData: BarAreaData(
+                                        show: false,
+                                      ), // Remove any shadows from WHO lines
+                                    ),
+                                  if (_whoStandardLines.containsKey('plus2SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['plus2SD']!,
+                                      isCurved: true,
+                                      color: Colors.orange.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(
+                                        show: false,
+                                      ), // Remove any shadows from WHO lines
+                                    ),
+                                  if (_whoStandardLines.containsKey('plus3SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['plus3SD']!,
+                                      isCurved: true,
+                                      color: Colors.red.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(
+                                        show: false,
+                                      ), // Remove any shadows from WHO lines
+                                    ),
+
+                                  // MAIN BABY WEIGHT LINE (keep existing but remove blue shadow)
+                                  LineChartBarData(
+                                    spots: spots,
+                                    isCurved: true,
+                                    color: const Color(0xFF1873EA),
+                                    barWidth: 4,
+                                    isStrokeCapRound: true,
+                                    dotData: FlDotData(
+                                      show: true,
+                                      getDotPainter: (
+                                        spot,
+                                        percent,
+                                        barData,
+                                        index,
+                                      ) {
+                                        Color dotColor =
+                                            index < spotColors.length
+                                                ? spotColors[index]
+                                                : const Color(0xFF1873EA);
+
+                                        return FlDotCirclePainter(
+                                          radius: 6,
+                                          color: dotColor,
+                                          strokeWidth: 3,
+                                          strokeColor: Colors.white,
+                                        );
+                                      },
+                                    ),
+                                    belowBarData: BarAreaData(
+                                      show: false,
+                                    ), // REMOVED: Blue shadow below baby's weight line
+                                  ),
                                 ],
                               ),
+                            ),
+                          ), */ Container(
+                            width: chartWidth,
+                            height: 380,
+                            child: Stack(
+                              children: [
+                                // Custom painted WHO regions (behind the chart)
+                                if (_whoStandardLines.isNotEmpty)
+                                  CustomPaint(
+                                    size: Size(chartWidth, 380),
+                                    painter: WHORegionPainter(
+                                      whoLines: _whoStandardLines,
+                                      minX: minXAdjusted,
+                                      maxX: maxXAdjusted,
+                                      minY: finalMinY,
+                                      maxY: finalMaxY + 0.5,
+                                      chartSize: Size(chartWidth, 380),
+                                    ),
+                                  ),
+                                // Original LineChart (on top of the painted regions)
+                                LineChart(
+                                  LineChartData(
+                                    gridData: FlGridData(
+                                      show: true,
+                                      drawVerticalLine: true,
+                                      horizontalInterval: 1.0,
+                                      verticalInterval: 15,
+                                      getDrawingHorizontalLine: (value) {
+                                        return FlLine(
+                                          color: Colors.grey.shade200,
+                                          strokeWidth: 1,
+                                        );
+                                      },
+                                      getDrawingVerticalLine: (value) {
+                                        return FlLine(
+                                          color: Colors.grey.shade200,
+                                          strokeWidth: 0.8,
+                                        );
+                                      },
+                                    ),
+                                    titlesData: FlTitlesData(
+                                      // ... keep all your existing titlesData configuration
+                                      show: true,
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 65,
+                                          getTitlesWidget: (value, meta) {
+                                            if (value < 0) {
+                                              return const SizedBox();
+                                            }
+
+                                            final birthDate =
+                                                _child!.dateOfBirth;
+                                            final date = birthDate.add(
+                                              Duration(days: value.toInt()),
+                                            );
+
+                                            final month = DateFormat(
+                                              'MMM',
+                                            ).format(date);
+                                            final day = DateFormat(
+                                              'd',
+                                            ).format(date);
+
+                                            return SideTitleWidget(
+                                              angle: 0,
+                                              space: 8,
+                                              meta: meta,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      day,
+                                                      style: TextStyle(
+                                                        color:
+                                                            Colors
+                                                                .grey
+                                                                .shade700,
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      month,
+                                                      style: TextStyle(
+                                                        color:
+                                                            Colors
+                                                                .grey
+                                                                .shade600,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          interval: 15,
+                                        ),
+                                      ),
+                                      leftTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          getTitlesWidget: (value, meta) {
+                                            if (value < 0)
+                                              return const SizedBox();
+                                            if (value.round() != value)
+                                              return const SizedBox();
+
+                                            String valueText =
+                                                value.toInt().toString();
+
+                                            return SideTitleWidget(
+                                              angle: 0,
+                                              space: 12,
+                                              meta: meta,
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  valueText,
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade700,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          reservedSize: 45,
+                                          interval: 1.0,
+                                        ),
+                                      ),
+                                      rightTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: false,
+                                        ),
+                                      ),
+                                      topTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: false,
+                                        ),
+                                      ),
+                                    ),
+                                    borderData: FlBorderData(
+                                      show: true,
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    minX: minXAdjusted,
+                                    maxX: maxXAdjusted,
+                                    minY: finalMinY,
+                                    maxY: finalMaxY + 0.5,
+                                    clipData: FlClipData.all(),
+                                    lineTouchData: LineTouchData(
+                                      // ... keep all your existing lineTouchData configuration
+                                      touchTooltipData: LineTouchTooltipData(
+                                        getTooltipColor:
+                                            (touchedSpot) =>
+                                                const Color.fromARGB(
+                                                  255,
+                                                  248,
+                                                  245,
+                                                  245,
+                                                ),
+                                        tooltipRoundedRadius: 16,
+                                        tooltipPadding: EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        tooltipMargin: 20,
+                                        fitInsideHorizontally: true,
+                                        fitInsideVertically: true,
+                                        tooltipBorder: BorderSide(
+                                          color: Colors.blueAccent,
+                                          width: 1.5,
+                                        ),
+                                        getTooltipItems: (
+                                          List<LineBarSpot> touchedSpots,
+                                        ) {
+                                          // ... keep all your existing tooltip logic
+                                          return touchedSpots.map((spot) {
+                                            // Check if this is a WHO standard line
+                                            for (var entry
+                                                in _whoStandardLines.entries) {
+                                              final lineType = entry.key;
+                                              final line = entry.value;
+
+                                              bool isWHOLine = line.any(
+                                                (s) =>
+                                                    (s.x - spot.x).abs() <
+                                                        0.1 &&
+                                                    (s.y - spot.y).abs() < 0.1,
+                                              );
+
+                                              if (isWHOLine) {
+                                                String lineLabel = "";
+                                                Color lineColor =
+                                                    Colors.black87;
+
+                                                switch (lineType) {
+                                                  case 'minus3SD':
+                                                    lineLabel =
+                                                        "SD -3 (Severe)";
+                                                    lineColor =
+                                                        Colors.red.shade700;
+                                                    break;
+                                                  case 'minus2SD':
+                                                    lineLabel =
+                                                        "SD -2 (Underweight)";
+                                                    lineColor =
+                                                        Colors.orange.shade700;
+                                                    break;
+                                                  case 'median':
+                                                    lineLabel = "WHO Median";
+                                                    lineColor =
+                                                        Colors.green.shade700;
+                                                    break;
+                                                  case 'plus2SD':
+                                                    lineLabel =
+                                                        "SD +2 (Overweight)";
+                                                    lineColor =
+                                                        Colors.orange.shade700;
+                                                    break;
+                                                  case 'plus3SD':
+                                                    lineLabel =
+                                                        "SD +3 (Severe)";
+                                                    lineColor =
+                                                        Colors.red.shade700;
+                                                    break;
+                                                  default:
+                                                    lineLabel = lineType;
+                                                }
+
+                                                String weightText =
+                                                    '${spot.y.toStringAsFixed(1)} kg';
+
+                                                return LineTooltipItem(
+                                                  '$lineLabel\n$weightText',
+                                                  TextStyle(
+                                                    color: lineColor,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 14,
+                                                    height: 1.4,
+                                                  ),
+                                                );
+                                              }
+                                            }
+
+                                            // Baby's data point (keep your updated logic with weight comparison)
+                                            int dayNumber = -1;
+                                            for (var entry in sortedEntries) {
+                                              final days =
+                                                  dayToDateMap[entry.key]!
+                                                      .difference(
+                                                        _child!.dateOfBirth,
+                                                      )
+                                                      .inDays;
+                                              double weight = entry.value;
+
+                                              if ((days.toDouble() - spot.x)
+                                                          .abs() <
+                                                      0.1 &&
+                                                  (weight - spot.y).abs() <
+                                                      0.1) {
+                                                dayNumber = entry.key;
+                                                break;
+                                              }
+                                            }
+
+                                            if (dayNumber > 0) {
+                                              final date =
+                                                  dayToDateMap[dayNumber]!;
+                                              final dateStr = DateFormat(
+                                                'd MMM yyyy',
+                                              ).format(date);
+                                              final currentWeight = spot.y;
+
+                                              String comparisonMessage;
+                                              Color messageColor =
+                                                  Colors.blue.shade700;
+
+                                              final previousEntry =
+                                                  _findPreviousWeightEntry(
+                                                    dayNumber,
+                                                  );
+
+                                              if (previousEntry == null) {
+                                                comparisonMessage =
+                                                    "First weight entry";
+                                                messageColor =
+                                                    Colors.blue.shade700;
+                                              } else {
+                                                final prevWeight =
+                                                    previousEntry['weight']
+                                                        as double;
+                                                final prevDate =
+                                                    previousEntry['date']
+                                                        as DateTime;
+                                                final prevDateStr = DateFormat(
+                                                  'd MMM yyyy',
+                                                ).format(prevDate);
+                                                final weightDiff =
+                                                    currentWeight - prevWeight;
+
+                                                if (weightDiff > 0) {
+                                                  comparisonMessage =
+                                                      "Weight increased by ${weightDiff.toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                  messageColor =
+                                                      Colors.green.shade700;
+                                                } else if (weightDiff < 0) {
+                                                  comparisonMessage =
+                                                      "Weight decreased by ${(-weightDiff).toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                  messageColor =
+                                                      Colors.red.shade700;
+                                                } else {
+                                                  comparisonMessage =
+                                                      "Weight maintained since $prevDateStr (${prevWeight.toStringAsFixed(1)}kg)";
+                                                  messageColor =
+                                                      Colors.blue.shade700;
+                                                }
+                                              }
+
+                                              String weightText =
+                                                  '${currentWeight.toStringAsFixed(1)} kg';
+
+                                              return LineTooltipItem(
+                                                '$dateStr\n$weightText\n$comparisonMessage',
+                                                TextStyle(
+                                                  color: messageColor,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
+                                                  height: 1.4,
+                                                ),
+                                              );
+                                            }
+
+                                            return LineTooltipItem(
+                                              'Unknown point',
+                                              TextStyle(
+                                                color: Colors.black87,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                                height: 1.4,
+                                              ),
+                                            );
+                                          }).toList();
+                                        },
+                                      ),
+                                      handleBuiltInTouches: true,
+                                    ),
+                                    lineBarsData: [
+                                      // SIMPLIFIED LINE BARS DATA - NO REGIONS, JUST LINES
+
+                                      // WHO standard lines (without any belowBarData)
+                                      if (_whoStandardLines.containsKey(
+                                        'minus3SD',
+                                      ))
+                                        LineChartBarData(
+                                          spots: _whoStandardLines['minus3SD']!,
+                                          isCurved: true,
+                                          color: Colors.red.withOpacity(0.8),
+                                          barWidth: 1.5,
+                                          isStrokeCapRound: true,
+                                          dotData: FlDotData(show: false),
+                                          dashArray: [6, 4],
+                                          belowBarData: BarAreaData(
+                                            show: false,
+                                          ),
+                                        ),
+                                      if (_whoStandardLines.containsKey(
+                                        'minus2SD',
+                                      ))
+                                        LineChartBarData(
+                                          spots: _whoStandardLines['minus2SD']!,
+                                          isCurved: true,
+                                          color: Colors.orange.withOpacity(0.8),
+                                          barWidth: 1.5,
+                                          isStrokeCapRound: true,
+                                          dotData: FlDotData(show: false),
+                                          dashArray: [6, 4],
+                                          belowBarData: BarAreaData(
+                                            show: false,
+                                          ),
+                                        ),
+                                      if (_whoStandardLines.containsKey(
+                                        'median',
+                                      ))
+                                        LineChartBarData(
+                                          spots: _whoStandardLines['median']!,
+                                          isCurved: true,
+                                          color: Colors.green,
+                                          barWidth: 2.5,
+                                          isStrokeCapRound: true,
+                                          dotData: FlDotData(show: false),
+                                          belowBarData: BarAreaData(
+                                            show: false,
+                                          ),
+                                        ),
+                                      if (_whoStandardLines.containsKey(
+                                        'plus2SD',
+                                      ))
+                                        LineChartBarData(
+                                          spots: _whoStandardLines['plus2SD']!,
+                                          isCurved: true,
+                                          color: Colors.orange.withOpacity(0.8),
+                                          barWidth: 1.5,
+                                          isStrokeCapRound: true,
+                                          dotData: FlDotData(show: false),
+                                          dashArray: [6, 4],
+                                          belowBarData: BarAreaData(
+                                            show: false,
+                                          ),
+                                        ),
+                                      if (_whoStandardLines.containsKey(
+                                        'plus3SD',
+                                      ))
+                                        LineChartBarData(
+                                          spots: _whoStandardLines['plus3SD']!,
+                                          isCurved: true,
+                                          color: Colors.red.withOpacity(0.8),
+                                          barWidth: 1.5,
+                                          isStrokeCapRound: true,
+                                          dotData: FlDotData(show: false),
+                                          dashArray: [6, 4],
+                                          belowBarData: BarAreaData(
+                                            show: false,
+                                          ),
+                                        ),
+
+                                      // Main baby weight line (no blue shadow)
+                                      LineChartBarData(
+                                        spots: spots,
+                                        isCurved: true,
+                                        color: const Color(0xFF1873EA),
+                                        barWidth: 4,
+                                        isStrokeCapRound: true,
+                                        dotData: FlDotData(
+                                          show: true,
+                                          getDotPainter: (
+                                            spot,
+                                            percent,
+                                            barData,
+                                            index,
+                                          ) {
+                                            Color dotColor =
+                                                index < spotColors.length
+                                                    ? spotColors[index]
+                                                    : const Color(0xFF1873EA);
+
+                                            return FlDotCirclePainter(
+                                              radius: 6,
+                                              color: dotColor,
+                                              strokeWidth: 3,
+                                              strokeColor: Colors.white,
+                                            );
+                                          },
+                                        ),
+                                        belowBarData: BarAreaData(show: false),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -2772,7 +3365,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                               final data = doc.data();
 
                               final date = (data['date'] as Timestamp).toDate();
-                              final weightInKg = (data['weight'] ?? 0) / 1000.0;
+                              final weightInKg = (data['weight'] ?? 0);
 
                               final formattedDate = DateFormat(
                                 'dd/MM/yyyy',
@@ -3185,4 +3778,99 @@ class DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+//Custom Class for dynamic regions
+class WHORegionPainter extends CustomPainter {
+  final Map<String, List<FlSpot>> whoLines;
+  final double minX;
+  final double maxX;
+  final double minY;
+  final double maxY;
+  final Size chartSize;
+
+  WHORegionPainter({
+    required this.whoLines,
+    required this.minX,
+    required this.maxX,
+    required this.minY,
+    required this.maxY,
+    required this.chartSize,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Helper function to convert chart coordinates to canvas coordinates
+    Offset chartToCanvas(double x, double y) {
+      double canvasX = (x - minX) / (maxX - minX) * size.width;
+      double canvasY = size.height - (y - minY) / (maxY - minY) * size.height;
+      return Offset(canvasX, canvasY);
+    }
+
+    // Helper function to create a filled region between two lines
+    void paintRegion(String upperLineKey, String lowerLineKey, Color color) {
+      if (!whoLines.containsKey(upperLineKey) ||
+          !whoLines.containsKey(lowerLineKey)) {
+        return;
+      }
+
+      final upperLine = whoLines[upperLineKey]!;
+      final lowerLine = whoLines[lowerLineKey]!;
+
+      if (upperLine.isEmpty || lowerLine.isEmpty) return;
+
+      final paint =
+          Paint()
+            ..color = color
+            ..style = PaintingStyle.fill;
+
+      final path = Path();
+
+      // Start from the first point of the upper line
+      final firstUpperPoint = chartToCanvas(
+        upperLine.first.x,
+        upperLine.first.y,
+      );
+      path.moveTo(firstUpperPoint.dx, firstUpperPoint.dy);
+
+      // Draw along the upper line (left to right)
+      for (int i = 1; i < upperLine.length; i++) {
+        final point = chartToCanvas(upperLine[i].x, upperLine[i].y);
+        path.lineTo(point.dx, point.dy);
+      }
+
+      // Connect to the last point of the lower line
+      final lastLowerPoint = chartToCanvas(lowerLine.last.x, lowerLine.last.y);
+      path.lineTo(lastLowerPoint.dx, lastLowerPoint.dy);
+
+      // Draw along the lower line (right to left)
+      for (int i = lowerLine.length - 2; i >= 0; i--) {
+        final point = chartToCanvas(lowerLine[i].x, lowerLine[i].y);
+        path.lineTo(point.dx, point.dy);
+      }
+
+      // Close the path back to the first upper point
+      path.close();
+
+      // Draw the filled region
+      canvas.drawPath(path, paint);
+    }
+
+    // Paint all regions with their respective colors
+
+    // Red region: Between severe underweight (-3SD) and underweight (-2SD)
+    paintRegion('minus2SD', 'minus3SD', Colors.red.withOpacity(0.15));
+
+    // Orange region: Between underweight (-2SD) and median
+    paintRegion('median', 'minus2SD', Colors.orange.withOpacity(0.15));
+
+    // Orange region: Between median and overweight (+2SD)
+    paintRegion('plus2SD', 'median', Colors.orange.withOpacity(0.15));
+
+    // Red region: Between overweight (+2SD) and severe overweight (+3SD)
+    paintRegion('plus3SD', 'plus2SD', Colors.red.withOpacity(0.15));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
