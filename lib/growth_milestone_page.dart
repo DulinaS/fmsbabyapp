@@ -1719,80 +1719,96 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1873EA).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.trending_up,
-                        size: 20,
-                        color: Color(0xFF1873EA),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      'Weight Progress',
-                      style: TextStyle(
-                        color: const Color(0xFF1873EA),
-                        fontSize: 18,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.monitor_weight_outlined,
-                            size: 16,
-                            color: Colors.grey.shade600,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Weight (kg)',
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => _showWHOStandardsInfo(context),
-                      child: Container(
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      Container(
                         padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: Color(0xFF1873EA).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
-                          Icons.info_outline,
-                          size: 18,
+                          Icons.trending_up,
+                          size: 20,
                           color: Color(0xFF1873EA),
                         ),
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 12),
+                      Flexible(
+                        // Use Flexible instead of no wrapping
+                        child: Text(
+                          'Weight Progress',
+                          style: TextStyle(
+                            color: const Color(0xFF1873EA),
+                            fontSize: 18,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis, // Handle overflow
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  // Wrap in Expanded
+                  flex: 2, // Give less space to the right side
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.end, // Align to the right
+                    children: [
+                      Flexible(
+                        // Make the weight unit container flexible
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8, // Reduced padding
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.monitor_weight_outlined,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Weight',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _showWHOStandardsInfo(context),
+                        child: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF1873EA).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: Color(0xFF1873EA),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -2022,8 +2038,8 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                 minY: finalMinY,
                                 maxY: finalMaxY + 0.5,
                                 clipData: FlClipData.all(),
-                                /* // Replace your existing lineTouchData in the LineChart with this:
-                                lineTouchData: LineTouchData(
+                                // Replace your existing lineTouchData in the LineChart with this:
+                                /* lineTouchData: LineTouchData(
                                   // Custom touch callback to filter out WHO line touches
                                   touchCallback: (
                                     FlTouchEvent event,
