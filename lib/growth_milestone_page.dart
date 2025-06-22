@@ -2022,7 +2022,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                 minY: finalMinY,
                                 maxY: finalMaxY + 0.5,
                                 clipData: FlClipData.all(),
-                                // Replace your existing lineTouchData in the LineChart with this:
+                                /* // Replace your existing lineTouchData in the LineChart with this:
                                 lineTouchData: LineTouchData(
                                   // Custom touch callback to filter out WHO line touches
                                   touchCallback: (
@@ -2056,6 +2056,297 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     getTooltipItems: (
                                       List<LineBarSpot> touchedSpots,
                                     ) {
+                                      // Find the baby's weight line index (it should be the last line)
+                                      int babyLineIndex = -1;
+
+                                      // Count the total lines to find baby's line index
+                                      int totalLines = 0;
+
+                                      // Count region slices
+                                      totalLines +=
+                                          _createCurvedRegionSlices(
+                                            'minus2SD',
+                                            'minus3SD',
+                                            Colors.red.withOpacity(0.1),
+                                          ).length;
+                                      totalLines +=
+                                          _createCurvedRegionSlices(
+                                            'median',
+                                            'minus2SD',
+                                            Colors.orange.withOpacity(0.1),
+                                          ).length;
+                                      totalLines +=
+                                          _createCurvedRegionSlices(
+                                            'plus2SD',
+                                            'median',
+                                            Colors.orange.withOpacity(0.1),
+                                          ).length;
+                                      totalLines +=
+                                          _createCurvedRegionSlices(
+                                            'plus3SD',
+                                            'plus2SD',
+                                            Colors.red.withOpacity(0.1),
+                                          ).length;
+
+                                      // Count WHO standard lines
+                                      if (_whoStandardLines.containsKey(
+                                        'minus3SD',
+                                      ))
+                                        totalLines++;
+                                      if (_whoStandardLines.containsKey(
+                                        'minus2SD',
+                                      ))
+                                        totalLines++;
+                                      if (_whoStandardLines.containsKey(
+                                        'median',
+                                      ))
+                                        totalLines++;
+                                      if (_whoStandardLines.containsKey(
+                                        'plus2SD',
+                                      ))
+                                        totalLines++;
+                                      if (_whoStandardLines.containsKey(
+                                        'plus3SD',
+                                      ))
+                                        totalLines++;
+
+                                      // Baby's line is the last one
+                                      babyLineIndex = totalLines;
+
+                                      List<LineTooltipItem?> tooltipItems = [];
+
+                                      for (
+                                        int i = 0;
+                                        i < touchedSpots.length;
+                                        i++
+                                      ) {
+                                        LineBarSpot spot = touchedSpots[i];
+
+                                        // Only show tooltip for baby's weight line
+                                        if (spot.barIndex == babyLineIndex) {
+                                          // Find the corresponding day number
+                                          int? dayNumber =
+                                              _findDayNumberForSpot(spot);
+
+                                          if (dayNumber != null &&
+                                              dayNumber > 0) {
+                                            final date =
+                                                dayToDateMap[dayNumber]!;
+                                            final dateStr = DateFormat(
+                                              'd MMM yyyy',
+                                            ).format(date);
+                                            final currentWeight = spot.y;
+
+                                            String comparisonMessage;
+                                            Color messageColor =
+                                                Colors.blue.shade700;
+
+                                            final previousEntry =
+                                                _findPreviousWeightEntry(
+                                                  dayNumber,
+                                                );
+                                            if (previousEntry == null) {
+                                              comparisonMessage =
+                                                  "First weight entry";
+                                              messageColor =
+                                                  Colors.blue.shade700;
+                                            } else {
+                                              final prevWeight =
+                                                  previousEntry['weight']
+                                                      as double;
+                                              final prevDate =
+                                                  previousEntry['date']
+                                                      as DateTime;
+                                              final prevDateStr = DateFormat(
+                                                'd MMM yyyy',
+                                              ).format(prevDate);
+                                              final weightDiff =
+                                                  currentWeight - prevWeight;
+
+                                              if (weightDiff > 0) {
+                                                comparisonMessage =
+                                                    "Weight increased by ${weightDiff.toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.green.shade700;
+                                              } else if (weightDiff < 0) {
+                                                comparisonMessage =
+                                                    "Weight decreased by ${(-weightDiff).toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.orange.shade700;
+                                              } else {
+                                                comparisonMessage =
+                                                    "Weight maintained since $prevDateStr (${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.blue.shade700;
+                                              }
+                                            }
+
+                                            String weightText =
+                                                '${currentWeight.toStringAsFixed(1)} kg';
+
+                                            tooltipItems.add(
+                                              LineTooltipItem(
+                                                '$dateStr\n$weightText\n$comparisonMessage',
+                                                TextStyle(
+                                                  color: messageColor,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
+                                                  height: 1.4,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            tooltipItems.add(null);
+                                          }
+                                        } else {
+                                          // Hide tooltip for WHO lines
+                                          tooltipItems.add(null);
+                                        }
+                                      }
+
+                                      return tooltipItems;
+                                    },
+                                  ),
+
+                                  handleBuiltInTouches: true,
+                                  touchSpotThreshold: 20,
+                                ), */
+                                lineTouchData: LineTouchData(
+                                  // Custom touch callback to filter out WHO line touches
+                                  touchCallback: (
+                                    FlTouchEvent event,
+                                    LineTouchResponse? response,
+                                  ) {
+                                    // We'll let the default handling occur, but filter in getTooltipItems
+                                  },
+
+                                  // ADD THIS: Configure which lines show touch indicators
+                                  getTouchedSpotIndicator: (
+                                    LineChartBarData barData,
+                                    List<int> spotIndexes,
+                                  ) {
+                                    // Find the baby's weight line index
+                                    int babyLineIndex = -1;
+
+                                    // Count the total lines to find baby's line index
+                                    int totalLines = 0;
+
+                                    // Count region slices
+                                    totalLines +=
+                                        _createCurvedRegionSlices(
+                                          'minus2SD',
+                                          'minus3SD',
+                                          Colors.red.withOpacity(0.1),
+                                        ).length;
+                                    totalLines +=
+                                        _createCurvedRegionSlices(
+                                          'median',
+                                          'minus2SD',
+                                          Colors.orange.withOpacity(0.1),
+                                        ).length;
+                                    totalLines +=
+                                        _createCurvedRegionSlices(
+                                          'plus2SD',
+                                          'median',
+                                          Colors.orange.withOpacity(0.1),
+                                        ).length;
+                                    totalLines +=
+                                        _createCurvedRegionSlices(
+                                          'plus3SD',
+                                          'plus2SD',
+                                          Colors.red.withOpacity(0.1),
+                                        ).length;
+
+                                    // Count WHO standard lines
+                                    if (_whoStandardLines.containsKey(
+                                      'minus3SD',
+                                    ))
+                                      totalLines++;
+                                    if (_whoStandardLines.containsKey(
+                                      'minus2SD',
+                                    ))
+                                      totalLines++;
+                                    if (_whoStandardLines.containsKey('median'))
+                                      totalLines++;
+                                    if (_whoStandardLines.containsKey(
+                                      'plus2SD',
+                                    ))
+                                      totalLines++;
+                                    if (_whoStandardLines.containsKey(
+                                      'plus3SD',
+                                    ))
+                                      totalLines++;
+
+                                    // Baby's line is the last one
+                                    babyLineIndex = totalLines;
+
+                                    // Check if this is the baby's weight line by comparing line characteristics
+                                    bool isBabyLine =
+                                        barData.spots.length == spots.length &&
+                                        barData.color ==
+                                            const Color(0xFF1873EA) &&
+                                        barData.barWidth == 4 &&
+                                        barData.dotData.show == true;
+
+                                    if (!isBabyLine) {
+                                      // Return null indicators for WHO lines (no dots or vertical lines)
+                                      return spotIndexes
+                                          .map((index) => null)
+                                          .toList();
+                                    }
+
+                                    // Return proper indicators only for baby's weight line
+                                    return spotIndexes.map((index) {
+                                      return TouchedSpotIndicatorData(
+                                        FlLine(
+                                          color: const Color(0xFF1873EA),
+                                          strokeWidth: 2,
+                                        ),
+                                        FlDotData(
+                                          getDotPainter: (
+                                            spot,
+                                            percent,
+                                            barData,
+                                            index,
+                                          ) {
+                                            return FlDotCirclePainter(
+                                              radius: 8,
+                                              color: const Color(0xFF1873EA),
+                                              strokeWidth: 3,
+                                              strokeColor: Colors.white,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+
+                                  touchTooltipData: LineTouchTooltipData(
+                                    // ... keep your existing touchTooltipData configuration as is
+                                    getTooltipColor:
+                                        (touchedSpot) => const Color.fromARGB(
+                                          255,
+                                          248,
+                                          245,
+                                          245,
+                                        ),
+                                    tooltipRoundedRadius: 16,
+                                    tooltipPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    tooltipMargin: 20,
+                                    fitInsideHorizontally: true,
+                                    fitInsideVertically: true,
+                                    tooltipBorder: BorderSide(
+                                      color: Colors.blueAccent,
+                                      width: 1.5,
+                                    ),
+
+                                    getTooltipItems: (
+                                      List<LineBarSpot> touchedSpots,
+                                    ) {
+                                      // ... keep your existing getTooltipItems logic exactly as is
                                       // Find the baby's weight line index (it should be the last line)
                                       int babyLineIndex = -1;
 
