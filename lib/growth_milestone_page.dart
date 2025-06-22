@@ -90,7 +90,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     super.dispose();
   }
 
-  Future<void> _loadWHOStandardLines() async {
+  /* Future<void> _loadWHOStandardLines() async {
     if (_child == null) return;
 
     try {
@@ -130,6 +130,66 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         lines[key] =
             pointList.map((point) {
               // Always weight in kg for the chart
+              double yValue = point['y'] as double;
+              return FlSpot(point['x'] as double, yValue);
+            }).toList();
+      });
+
+      if (mounted) {
+        setState(() {
+          _whoStandardLines = lines;
+          _isLoadingStandards = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading WHO standards: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingStandards = false;
+        });
+      }
+    }
+  } */
+  Future<void> _loadWHOStandardLines() async {
+    if (_child == null) return;
+
+    try {
+      final growthStandardService = GrowthStandardService();
+
+      // OPTIMIZED: Limit max days to reduce complexity
+      int maxDays = 180; // Default to 6 months minimum
+
+      if (dayToDateMap.isNotEmpty) {
+        final latestDate = dayToDateMap.values.reduce(
+          (a, b) => a.isAfter(b) ? a : b,
+        );
+
+        int daysFromBirthToLatest =
+            latestDate.difference(_child!.dateOfBirth).inDays +
+            30; // Reduced buffer
+
+        maxDays = daysFromBirthToLatest > 180 ? daysFromBirthToLatest : 180;
+      }
+
+      // Cap maximum days to prevent performance issues
+      maxDays = maxDays > 365 ? 365 : maxDays; // Add this line
+
+      // Round to next month
+      maxDays = (maxDays ~/ 30 + 1) * 30;
+
+      // Get standard lines data
+      final standardLinesData = await growthStandardService
+          .getStandardLinesData(
+            _child!.gender,
+            _child!.dateOfBirth,
+            maxDays: maxDays,
+          );
+
+      // Convert to FlSpot format - ALWAYS in kg
+      Map<String, List<FlSpot>> lines = {};
+      standardLinesData.forEach((key, pointList) {
+        lines[key] =
+            pointList.map((point) {
               double yValue = point['y'] as double;
               return FlSpot(point['x'] as double, yValue);
             }).toList();
@@ -1028,7 +1088,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
-  List<LineChartBarData> _createCurvedRegionSlices(
+  /*  List<LineChartBarData> _createCurvedRegionSlices(
     String upperLineKey,
     String lowerLineKey,
     Color sliceColor,
@@ -1100,6 +1160,48 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     }
 
     return slices;
+  } */
+  List<LineChartBarData> _createCurvedRegionSlices(
+    String upperLineKey,
+    String lowerLineKey,
+    Color sliceColor,
+  ) {
+    if (!_whoStandardLines.containsKey(upperLineKey) ||
+        !_whoStandardLines.containsKey(lowerLineKey)) {
+      return [];
+    }
+
+    final upperLine = _whoStandardLines[upperLineKey]!;
+    final lowerLine = _whoStandardLines[lowerLineKey]!;
+
+    if (upperLine.isEmpty || lowerLine.isEmpty) return [];
+
+    // OPTIMIZED: Create fewer, more efficient area fills
+    List<FlSpot> areaSpots = [];
+
+    // Sample points every 14 days instead of 3 days
+    for (int i = 0; i < upperLine.length; i += 2) {
+      // Every 2nd point instead of every point
+      areaSpots.add(upperLine[i]);
+    }
+
+    // Add reverse path for lower line to create closed area
+    for (int i = lowerLine.length - 1; i >= 0; i -= 2) {
+      areaSpots.add(lowerLine[i]);
+    }
+
+    if (areaSpots.length < 3) return [];
+
+    return [
+      LineChartBarData(
+        spots: areaSpots,
+        isCurved: true,
+        color: Colors.transparent,
+        barWidth: 0,
+        dotData: FlDotData(show: false),
+        belowBarData: BarAreaData(show: true, color: sliceColor),
+      ),
+    ];
   }
 
   // Helper method to check if a touched spot belongs to baby's weight line
@@ -2038,195 +2140,6 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                 minY: finalMinY,
                                 maxY: finalMaxY + 0.5,
                                 clipData: FlClipData.all(),
-                                // Replace your existing lineTouchData in the LineChart with this:
-                                /* lineTouchData: LineTouchData(
-                                  // Custom touch callback to filter out WHO line touches
-                                  touchCallback: (
-                                    FlTouchEvent event,
-                                    LineTouchResponse? response,
-                                  ) {
-                                    // We'll let the default handling occur, but filter in getTooltipItems
-                                  },
-
-                                  touchTooltipData: LineTouchTooltipData(
-                                    getTooltipColor:
-                                        (touchedSpot) => const Color.fromARGB(
-                                          255,
-                                          248,
-                                          245,
-                                          245,
-                                        ),
-                                    tooltipRoundedRadius: 16,
-                                    tooltipPadding: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    tooltipMargin: 20,
-                                    fitInsideHorizontally: true,
-                                    fitInsideVertically: true,
-                                    tooltipBorder: BorderSide(
-                                      color: Colors.blueAccent,
-                                      width: 1.5,
-                                    ),
-
-                                    getTooltipItems: (
-                                      List<LineBarSpot> touchedSpots,
-                                    ) {
-                                      // Find the baby's weight line index (it should be the last line)
-                                      int babyLineIndex = -1;
-
-                                      // Count the total lines to find baby's line index
-                                      int totalLines = 0;
-
-                                      // Count region slices
-                                      totalLines +=
-                                          _createCurvedRegionSlices(
-                                            'minus2SD',
-                                            'minus3SD',
-                                            Colors.red.withOpacity(0.1),
-                                          ).length;
-                                      totalLines +=
-                                          _createCurvedRegionSlices(
-                                            'median',
-                                            'minus2SD',
-                                            Colors.orange.withOpacity(0.1),
-                                          ).length;
-                                      totalLines +=
-                                          _createCurvedRegionSlices(
-                                            'plus2SD',
-                                            'median',
-                                            Colors.orange.withOpacity(0.1),
-                                          ).length;
-                                      totalLines +=
-                                          _createCurvedRegionSlices(
-                                            'plus3SD',
-                                            'plus2SD',
-                                            Colors.red.withOpacity(0.1),
-                                          ).length;
-
-                                      // Count WHO standard lines
-                                      if (_whoStandardLines.containsKey(
-                                        'minus3SD',
-                                      ))
-                                        totalLines++;
-                                      if (_whoStandardLines.containsKey(
-                                        'minus2SD',
-                                      ))
-                                        totalLines++;
-                                      if (_whoStandardLines.containsKey(
-                                        'median',
-                                      ))
-                                        totalLines++;
-                                      if (_whoStandardLines.containsKey(
-                                        'plus2SD',
-                                      ))
-                                        totalLines++;
-                                      if (_whoStandardLines.containsKey(
-                                        'plus3SD',
-                                      ))
-                                        totalLines++;
-
-                                      // Baby's line is the last one
-                                      babyLineIndex = totalLines;
-
-                                      List<LineTooltipItem?> tooltipItems = [];
-
-                                      for (
-                                        int i = 0;
-                                        i < touchedSpots.length;
-                                        i++
-                                      ) {
-                                        LineBarSpot spot = touchedSpots[i];
-
-                                        // Only show tooltip for baby's weight line
-                                        if (spot.barIndex == babyLineIndex) {
-                                          // Find the corresponding day number
-                                          int? dayNumber =
-                                              _findDayNumberForSpot(spot);
-
-                                          if (dayNumber != null &&
-                                              dayNumber > 0) {
-                                            final date =
-                                                dayToDateMap[dayNumber]!;
-                                            final dateStr = DateFormat(
-                                              'd MMM yyyy',
-                                            ).format(date);
-                                            final currentWeight = spot.y;
-
-                                            String comparisonMessage;
-                                            Color messageColor =
-                                                Colors.blue.shade700;
-
-                                            final previousEntry =
-                                                _findPreviousWeightEntry(
-                                                  dayNumber,
-                                                );
-                                            if (previousEntry == null) {
-                                              comparisonMessage =
-                                                  "First weight entry";
-                                              messageColor =
-                                                  Colors.blue.shade700;
-                                            } else {
-                                              final prevWeight =
-                                                  previousEntry['weight']
-                                                      as double;
-                                              final prevDate =
-                                                  previousEntry['date']
-                                                      as DateTime;
-                                              final prevDateStr = DateFormat(
-                                                'd MMM yyyy',
-                                              ).format(prevDate);
-                                              final weightDiff =
-                                                  currentWeight - prevWeight;
-
-                                              if (weightDiff > 0) {
-                                                comparisonMessage =
-                                                    "Weight increased by ${weightDiff.toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
-                                                messageColor =
-                                                    Colors.green.shade700;
-                                              } else if (weightDiff < 0) {
-                                                comparisonMessage =
-                                                    "Weight decreased by ${(-weightDiff).toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
-                                                messageColor =
-                                                    Colors.orange.shade700;
-                                              } else {
-                                                comparisonMessage =
-                                                    "Weight maintained since $prevDateStr (${prevWeight.toStringAsFixed(1)}kg)";
-                                                messageColor =
-                                                    Colors.blue.shade700;
-                                              }
-                                            }
-
-                                            String weightText =
-                                                '${currentWeight.toStringAsFixed(1)} kg';
-
-                                            tooltipItems.add(
-                                              LineTooltipItem(
-                                                '$dateStr\n$weightText\n$comparisonMessage',
-                                                TextStyle(
-                                                  color: messageColor,
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 14,
-                                                  height: 1.4,
-                                                ),
-                                              ),
-                                            );
-                                          } else {
-                                            tooltipItems.add(null);
-                                          }
-                                        } else {
-                                          // Hide tooltip for WHO lines
-                                          tooltipItems.add(null);
-                                        }
-                                      }
-
-                                      return tooltipItems;
-                                    },
-                                  ),
-
-                                  handleBuiltInTouches: true,
-                                  touchSpotThreshold: 20,
-                                ), */
                                 lineTouchData: LineTouchData(
                                   // Custom touch callback to filter out WHO line touches
                                   touchCallback: (
@@ -2548,7 +2461,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     LineChartBarData(
                                       spots: _whoStandardLines['minus3SD']!,
                                       isCurved: true,
-                                      color: Colors.red.withOpacity(0.8),
+                                      color: Colors.red.withOpacity(1),
                                       barWidth: 1.5,
                                       isStrokeCapRound: true,
                                       dotData: FlDotData(
@@ -2563,7 +2476,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     LineChartBarData(
                                       spots: _whoStandardLines['minus2SD']!,
                                       isCurved: true,
-                                      color: Colors.orange.withOpacity(0.8),
+                                      color: Colors.orange.withOpacity(1),
                                       barWidth: 1.5,
                                       isStrokeCapRound: true,
                                       dotData: FlDotData(show: false),
@@ -2586,7 +2499,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     LineChartBarData(
                                       spots: _whoStandardLines['plus2SD']!,
                                       isCurved: true,
-                                      color: Colors.orange.withOpacity(0.8),
+                                      color: Colors.orange.withOpacity(1),
                                       barWidth: 1.5,
                                       isStrokeCapRound: true,
                                       dotData: FlDotData(show: false),
@@ -2598,7 +2511,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     LineChartBarData(
                                       spots: _whoStandardLines['plus3SD']!,
                                       isCurved: true,
-                                      color: Colors.red.withOpacity(0.8),
+                                      color: Colors.red.withOpacity(1),
                                       barWidth: 1.5,
                                       isStrokeCapRound: true,
                                       dotData: FlDotData(show: false),
@@ -2642,6 +2555,62 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     // This line will be touchable
                                   ),
                                 ],
+                                /* lineBarsData: [
+                                  // OPTIMIZED: Only essential colored regions
+                                  ...(_createCurvedRegionSlices(
+                                    'median',
+                                    'minus2SD',
+                                    Colors.orange.withOpacity(0.15),
+                                  )),
+                                  ...(_createCurvedRegionSlices(
+                                    'plus2SD',
+                                    'median',
+                                    Colors.orange.withOpacity(0.15),
+                                  )),
+
+                                  // ONLY median line from WHO standards (remove other vertical lines)
+                                  if (_whoStandardLines.containsKey('median'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['median']!,
+                                      isCurved: true,
+                                      color: Colors.green,
+                                      barWidth: 2.0,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+
+                                  // Baby's weight line (keep as is)
+                                  LineChartBarData(
+                                    spots: spots,
+                                    isCurved: true,
+                                    color: const Color(0xFF1873EA),
+                                    barWidth: 4,
+                                    isStrokeCapRound: true,
+                                    dotData: FlDotData(
+                                      show: true,
+                                      getDotPainter: (
+                                        spot,
+                                        percent,
+                                        barData,
+                                        index,
+                                      ) {
+                                        Color dotColor =
+                                            index < spotColors.length
+                                                ? spotColors[index]
+                                                : const Color(0xFF1873EA);
+                                        return FlDotCirclePainter(
+                                          radius: 6,
+                                          color: dotColor,
+                                          strokeWidth: 3,
+                                          strokeColor: Colors.white,
+                                        );
+                                      },
+                                    ),
+                                    belowBarData: BarAreaData(show: false),
+                                  ),
+                                ], */
                               ),
                             ),
                           ),
