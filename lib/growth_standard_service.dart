@@ -438,17 +438,13 @@ class GrowthStandardService {
     }
   }
 
-  /* // Generate standard lines data for chart display
-  Future<Map<String, List<Map<String, dynamic>>>> getStandardLinesData(
+  /* Future<Map<String, List<Map<String, dynamic>>>> getStandardLinesData(
     String gender,
     DateTime birthDate, {
-    int maxDays = 365, // Default to 1 year of data
+    int maxDays = 365,
   }) async {
     try {
-      // Get the standards data
       final standardsData = await getWeightStandardsData(gender);
-
-      // Lines we want to generate
       final lineTypes = [
         'minus3SD',
         'minus2SD',
@@ -458,126 +454,16 @@ class GrowthStandardService {
       ];
       Map<String, List<Map<String, dynamic>>> result = {};
 
-      // Initialize result map
       for (final type in lineTypes) {
         result[type] = [];
-      }
-
-      // Generate points at regular intervals
-      for (int dayNum = 0; dayNum <= maxDays; dayNum += 30) {
-        // Monthly points
-        final ageInDays = dayNum;
-        final ageInMonths = ageInDays / 30.44;
-        final ageInYears = ageInDays / 365.25;
-
-        // Determine if we should use monthly or yearly data
-        final String collection = ageInYears < 1 ? 'months' : 'years';
-
-        // Calculate age key to use
-        String ageKey;
-        if (collection == 'months') {
-          // Find closest month milestone (0, 1, 2, 3, 6, 9, 12)
-          final availableMonths = [0, 1, 2, 3, 6, 9, 12];
-          final closestMonth = availableMonths.reduce((prev, curr) {
-            return (ageInMonths - prev).abs() < (ageInMonths - curr).abs()
-                ? prev
-                : curr;
-          });
-          ageKey = closestMonth.toString();
-        } else {
-          // Find closest year milestone (1, 2, 3, 4, 5)
-          final availableYears = [1, 2, 3, 4, 5];
-          final closestYear = availableYears.reduce((prev, curr) {
-            return (ageInYears - prev).abs() < (ageInYears - curr).abs()
-                ? prev
-                : curr;
-          });
-          ageKey = closestYear.toString();
-        }
-
-        // Get range values for this age
-        final Map<String, dynamic> rangeValues =
-            standardsData[collection][ageKey];
-
-        // Calculate actual date for this age
-        final measurementDate = birthDate.add(Duration(days: dayNum));
-
-        // Add data points for each line - values are already in kg
-        for (final type in lineTypes) {
-          result[type]!.add({
-            'x': dayNum.toDouble(),
-            'y':
-                rangeValues[type]
-                    .toDouble(), // Already in kg, no conversion needed
-            'date': measurementDate,
-          });
-        }
-      }
-
-      return result;
-    } catch (e) {
-      debugPrint('Error generating standard lines: $e');
-      throw Exception('Failed to generate standard lines data');
-    }
-  }
- */
-  // REPLACE THE getStandardLinesData METHOD IN growth_standard_service.dart
-  // Find this method and replace it entirely with this improved version:
-
-  /* // Generate standard lines data for chart display with smooth interpolation
-  Future<Map<String, List<Map<String, dynamic>>>> getStandardLinesData(
-    String gender,
-    DateTime birthDate, {
-    int maxDays = 365, // Default to 1 year of data
-  }) async {
-    try {
-      // Get the standards data
-      final standardsData = await getWeightStandardsData(gender);
-
-      // Lines we want to generate
-      final lineTypes = [
-        'minus3SD',
-        'minus2SD',
-        'median',
-        'plus2SD',
-        'plus3SD',
-      ];
-      Map<String, List<Map<String, dynamic>>> result = {};
-
-      // Initialize result map
-      for (final type in lineTypes) {
-        result[type] = [];
-      }
-
-      // Helper function to interpolate weight between two age milestones
-      double interpolateWeight(
-        Map<String, dynamic> lowerAgeData,
-        Map<String, dynamic> upperAgeData,
-        double actualAge,
-        double lowerAge,
-        double upperAge,
-        String lineType,
-      ) {
-        if (actualAge <= lowerAge) return lowerAgeData[lineType].toDouble();
-        if (actualAge >= upperAge) return upperAgeData[lineType].toDouble();
-
-        // Linear interpolation between the two age points
-        double ratio = (actualAge - lowerAge) / (upperAge - lowerAge);
-        double lowerWeight = lowerAgeData[lineType].toDouble();
-        double upperWeight = upperAgeData[lineType].toDouble();
-
-        return lowerWeight + ratio * (upperWeight - lowerWeight);
       }
 
       // Helper function to get weight for any age with interpolation
       double getWeightForAge(double ageInMonths, String lineType) {
-        // Determine if we should use monthly or yearly data primarily
         if (ageInMonths <= 12) {
-          // Use monthly data with interpolation
           final monthlyData = standardsData['months'] as Map<String, dynamic>;
           final availableMonths = [0, 1, 2, 3, 6, 9, 12];
 
-          // Find the two closest age milestones
           int lowerIndex = 0;
           int upperIndex = availableMonths.length - 1;
 
@@ -595,21 +481,19 @@ class GrowthStandardService {
           final lowerAgeData = monthlyData[lowerAge.toInt().toString()];
           final upperAgeData = monthlyData[upperAge.toInt().toString()];
 
-          return interpolateWeight(
-            lowerAgeData,
-            upperAgeData,
-            ageInMonths,
-            lowerAge,
-            upperAge,
-            lineType,
-          );
+          if (ageInMonths <= lowerAge) return lowerAgeData[lineType].toDouble();
+          if (ageInMonths >= upperAge) return upperAgeData[lineType].toDouble();
+
+          double ratio = (ageInMonths - lowerAge) / (upperAge - lowerAge);
+          double lowerWeight = lowerAgeData[lineType].toDouble();
+          double upperWeight = upperAgeData[lineType].toDouble();
+
+          return lowerWeight + ratio * (upperWeight - lowerWeight);
         } else {
-          // Use yearly data with interpolation
           final yearlyData = standardsData['years'] as Map<String, dynamic>;
           final ageInYears = ageInMonths / 12.0;
           final availableYears = [1, 2, 3, 4, 5];
 
-          // Find the two closest age milestones
           int lowerIndex = 0;
           int upperIndex = availableYears.length - 1;
 
@@ -627,75 +511,29 @@ class GrowthStandardService {
           final lowerAgeData = yearlyData[lowerAge.toInt().toString()];
           final upperAgeData = yearlyData[upperAge.toInt().toString()];
 
-          return interpolateWeight(
-            lowerAgeData,
-            upperAgeData,
-            ageInYears,
-            lowerAge,
-            upperAge,
-            lineType,
-          );
+          if (ageInYears <= lowerAge) return lowerAgeData[lineType].toDouble();
+          if (ageInYears >= upperAge) return upperAgeData[lineType].toDouble();
+
+          double ratio = (ageInYears - lowerAge) / (upperAge - lowerAge);
+          double lowerWeight = lowerAgeData[lineType].toDouble();
+          double upperWeight = upperAgeData[lineType].toDouble();
+
+          return lowerWeight + ratio * (upperWeight - lowerWeight);
         }
       }
 
-      // Generate points at much higher frequency for smooth curves
-      for (int dayNum = 0; dayNum <= maxDays; dayNum += 3) {
-        // Every 3 days instead of 30
-        final ageInDays = dayNum;
-        final ageInMonths = ageInDays / 30.44; // Average days per month
-
-        // Calculate actual date for this age
+      // OPTIMIZED: Generate points every 7 days instead of 3 days
+      for (int dayNum = 0; dayNum <= maxDays; dayNum += 7) {
+        final ageInMonths = dayNum / 30.44;
         final measurementDate = birthDate.add(Duration(days: dayNum));
 
-        // Add data points for each line with interpolated values
         for (final type in lineTypes) {
           final interpolatedWeight = getWeightForAge(ageInMonths, type);
-
           result[type]!.add({
             'x': dayNum.toDouble(),
             'y': interpolatedWeight,
             'date': measurementDate,
           });
-        }
-      }
-
-      // Add additional smoothing for very early days (0-30 days) for birth transition
-      if (maxDays >= 30) {
-        // Add daily points for first month for ultra-smooth birth transition
-        Map<String, List<Map<String, dynamic>>> earlyResult = {};
-        for (final type in lineTypes) {
-          earlyResult[type] = [];
-        }
-
-        for (int dayNum = 0; dayNum <= 30; dayNum += 1) {
-          // Daily for first month
-          final ageInDays = dayNum;
-          final ageInMonths = ageInDays / 30.44;
-          final measurementDate = birthDate.add(Duration(days: dayNum));
-
-          for (final type in lineTypes) {
-            final interpolatedWeight = getWeightForAge(ageInMonths, type);
-
-            earlyResult[type]!.add({
-              'x': dayNum.toDouble(),
-              'y': interpolatedWeight,
-              'date': measurementDate,
-            });
-          }
-        }
-
-        // Merge early detailed data with regular data (remove duplicates)
-        for (final type in lineTypes) {
-          // Remove points from result that are in the first 30 days
-          result[type]!.removeWhere((point) => point['x'] <= 30);
-
-          // Add the detailed early points
-          result[type]!.addAll(earlyResult[type]!);
-
-          // Sort by x (day number) to maintain chronological order
-          result[type]!.sort(
-            (a, b) => (a['x'] as double).compareTo(b['x'] as double),
-          );
         }
       }
 
@@ -789,8 +627,8 @@ class GrowthStandardService {
         }
       }
 
-      // OPTIMIZED: Generate points every 7 days instead of 3 days
-      for (int dayNum = 0; dayNum <= maxDays; dayNum += 7) {
+      // OPTIMIZED: Generate points every 5 days (compromise between smoothness and performance)
+      for (int dayNum = 0; dayNum <= maxDays; dayNum += 5) {
         final ageInMonths = dayNum / 30.44;
         final measurementDate = birthDate.add(Duration(days: dayNum));
 

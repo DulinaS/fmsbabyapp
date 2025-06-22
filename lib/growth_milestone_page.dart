@@ -1088,80 +1088,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
-  /*  List<LineChartBarData> _createCurvedRegionSlices(
-    String upperLineKey,
-    String lowerLineKey,
-    Color sliceColor,
-  ) {
-    if (!_whoStandardLines.containsKey(upperLineKey) ||
-        !_whoStandardLines.containsKey(lowerLineKey)) {
-      return [];
-    }
-
-    final upperLine = _whoStandardLines[upperLineKey]!;
-    final lowerLine = _whoStandardLines[lowerLineKey]!;
-
-    if (upperLine.isEmpty || lowerLine.isEmpty) return [];
-
-    List<LineChartBarData> slices = [];
-
-    // Find the Y range we need to cover
-    double minY = math.min(
-      lowerLine.map((e) => e.y).reduce((a, b) => math.min(a, b)),
-      upperLine.map((e) => e.y).reduce((a, b) => math.min(a, b)),
-    );
-    double maxY = math.max(
-      lowerLine.map((e) => e.y).reduce((a, b) => math.max(a, b)),
-      upperLine.map((e) => e.y).reduce((a, b) => math.max(a, b)),
-    );
-
-    // Create horizontal slices every 0.1kg
-    double sliceHeight = 0.1;
-    int numSlices = ((maxY - minY) / sliceHeight).ceil();
-
-    for (int i = 0; i <= numSlices; i++) {
-      double currentY = minY + (i * sliceHeight);
-
-      // Create spots for this horizontal slice, but only where it's between the two curves
-      List<FlSpot> sliceSpots = [];
-
-      // Get all X values where we have data
-      Set<double> allXValues = {};
-      upperLine.forEach((spot) => allXValues.add(spot.x));
-      lowerLine.forEach((spot) => allXValues.add(spot.x));
-
-      List<double> sortedXValues = allXValues.toList()..sort();
-
-      for (double x in sortedXValues) {
-        // Interpolate Y values at this X for both lines
-        double upperY = _interpolateYAtX(upperLine, x);
-        double lowerY = _interpolateYAtX(lowerLine, x);
-
-        // Only add this point if currentY is between the two curves
-        if (currentY >= lowerY && currentY <= upperY) {
-          sliceSpots.add(FlSpot(x, currentY));
-        }
-      }
-
-      // Only create a slice if we have valid spots
-      if (sliceSpots.length >= 2) {
-        slices.add(
-          LineChartBarData(
-            spots: sliceSpots,
-            isCurved: false, // Keep horizontal slices straight
-            color: sliceColor,
-            barWidth:
-                sliceHeight * 50, // Make the slice thick enough to be visible
-            dotData: FlDotData(show: false),
-            belowBarData: BarAreaData(show: false),
-          ),
-        );
-      }
-    }
-
-    return slices;
-  } */
-  List<LineChartBarData> _createCurvedRegionSlices(
+  /* List<LineChartBarData> _createCurvedRegionSlices(
     String upperLineKey,
     String lowerLineKey,
     Color sliceColor,
@@ -1200,6 +1127,44 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         barWidth: 0,
         dotData: FlDotData(show: false),
         belowBarData: BarAreaData(show: true, color: sliceColor),
+      ),
+    ];
+  } */
+  List<LineChartBarData> _createCurvedRegionSlices(
+    String upperLineKey,
+    String lowerLineKey,
+    Color sliceColor,
+  ) {
+    if (!_whoStandardLines.containsKey(upperLineKey) ||
+        !_whoStandardLines.containsKey(lowerLineKey)) {
+      return [];
+    }
+
+    final upperLine = _whoStandardLines[upperLineKey]!;
+    final lowerLine = _whoStandardLines[lowerLineKey]!;
+
+    if (upperLine.isEmpty || lowerLine.isEmpty) return [];
+
+    // Create smooth area between two curves
+    List<FlSpot> combinedSpots = [];
+
+    // Add upper line points (forward)
+    combinedSpots.addAll(upperLine);
+
+    // Add lower line points (reverse) to close the area
+    for (int i = lowerLine.length - 1; i >= 0; i--) {
+      combinedSpots.add(lowerLine[i]);
+    }
+
+    return [
+      LineChartBarData(
+        spots: combinedSpots,
+        isCurved: true,
+        color: Colors.transparent,
+        barWidth: 0,
+        dotData: FlDotData(show: false),
+        belowBarData: BarAreaData(show: true, color: sliceColor),
+        preventCurveOverShooting: true,
       ),
     ];
   }
@@ -2149,7 +2114,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     // We'll let the default handling occur, but filter in getTooltipItems
                                   },
 
-                                  // ADD THIS: Configure which lines show touch indicators
+                                  /* // ADD THIS: Configure which lines show touch indicators
                                   getTouchedSpotIndicator: (
                                     LineChartBarData barData,
                                     List<int> spotIndexes,
@@ -2248,8 +2213,59 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                         ),
                                       );
                                     }).toList();
-                                  },
+                                  },*/
+                                  getTouchedSpotIndicator: (
+                                    LineChartBarData barData,
+                                    List<int> spotIndexes,
+                                  ) {
+                                    // Only show indicators for baby's weight line (which is the last line)
+                                    int totalWhoLines = 0;
+                                    if (_whoStandardLines.isNotEmpty) {
+                                      totalWhoLines =
+                                          _whoStandardLines.length *
+                                          2; // WHO lines + regions
+                                    }
 
+                                    // Check if this is the baby's weight line
+                                    bool isBabyLine =
+                                        barData.spots.length == spots.length &&
+                                        barData.color ==
+                                            const Color(0xFF1873EA) &&
+                                        barData.barWidth == 4 &&
+                                        barData.dotData.show == true;
+
+                                    if (!isBabyLine) {
+                                      // Return null indicators for WHO lines and regions
+                                      return spotIndexes
+                                          .map((index) => null)
+                                          .toList();
+                                    }
+
+                                    // Return proper indicators only for baby's weight line
+                                    return spotIndexes.map((index) {
+                                      return TouchedSpotIndicatorData(
+                                        FlLine(
+                                          color: const Color(0xFF1873EA),
+                                          strokeWidth: 2,
+                                        ),
+                                        FlDotData(
+                                          getDotPainter: (
+                                            spot,
+                                            percent,
+                                            barData,
+                                            index,
+                                          ) {
+                                            return FlDotCirclePainter(
+                                              radius: 8,
+                                              color: const Color(0xFF1873EA),
+                                              strokeWidth: 3,
+                                              strokeColor: Colors.white,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
                                   touchTooltipData: LineTouchTooltipData(
                                     // ... keep your existing touchTooltipData configuration as is
                                     getTooltipColor:
@@ -2431,7 +2447,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                   handleBuiltInTouches: true,
                                   touchSpotThreshold: 20,
                                 ),
-                                lineBarsData: [
+                                /* lineBarsData: [
                                   // WHO STANDARD LINES FIRST (these won't be touchable)
 
                                   // Region slices first
@@ -2554,9 +2570,14 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     belowBarData: BarAreaData(show: false),
                                     // This line will be touchable
                                   ),
-                                ],
-                                /* lineBarsData: [
-                                  // OPTIMIZED: Only essential colored regions
+                                ], */
+                                lineBarsData: [
+                                  // Colored regions between WHO lines
+                                  ...(_createCurvedRegionSlices(
+                                    'minus2SD',
+                                    'minus3SD',
+                                    Colors.red.withOpacity(0.15),
+                                  )),
                                   ...(_createCurvedRegionSlices(
                                     'median',
                                     'minus2SD',
@@ -2567,21 +2588,74 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     'median',
                                     Colors.orange.withOpacity(0.15),
                                   )),
+                                  ...(_createCurvedRegionSlices(
+                                    'plus3SD',
+                                    'plus2SD',
+                                    Colors.red.withOpacity(0.15),
+                                  )),
 
-                                  // ONLY median line from WHO standards (remove other vertical lines)
+                                  // All WHO standard lines (but with no touch interaction)
+                                  if (_whoStandardLines.containsKey('minus3SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['minus3SD']!,
+                                      isCurved: true,
+                                      color: Colors.red.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+                                  if (_whoStandardLines.containsKey('minus2SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['minus2SD']!,
+                                      isCurved: true,
+                                      color: Colors.orange.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
                                   if (_whoStandardLines.containsKey('median'))
                                     LineChartBarData(
                                       spots: _whoStandardLines['median']!,
                                       isCurved: true,
                                       color: Colors.green,
-                                      barWidth: 2.0,
+                                      barWidth: 2.5,
                                       isStrokeCapRound: true,
                                       dotData: FlDotData(show: false),
                                       belowBarData: BarAreaData(show: false),
                                       preventCurveOverShooting: true,
                                     ),
+                                  if (_whoStandardLines.containsKey('plus2SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['plus2SD']!,
+                                      isCurved: true,
+                                      color: Colors.orange.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+                                  if (_whoStandardLines.containsKey('plus3SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['plus3SD']!,
+                                      isCurved: true,
+                                      color: Colors.red.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
 
-                                  // Baby's weight line (keep as is)
+                                  // Baby's weight line (LAST - this ensures it's on top and touchable)
                                   LineChartBarData(
                                     spots: spots,
                                     isCurved: true,
@@ -2610,7 +2684,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     ),
                                     belowBarData: BarAreaData(show: false),
                                   ),
-                                ], */
+                                ],
                               ),
                             ),
                           ),
