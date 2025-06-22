@@ -2214,7 +2214,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                       );
                                     }).toList();
                                   },*/
-                                  getTouchedSpotIndicator: (
+                                  /* getTouchedSpotIndicator: (
                                     LineChartBarData barData,
                                     List<int> spotIndexes,
                                   ) {
@@ -2233,6 +2233,49 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                             const Color(0xFF1873EA) &&
                                         barData.barWidth == 4 &&
                                         barData.dotData.show == true;
+
+                                    if (!isBabyLine) {
+                                      // Return null indicators for WHO lines and regions
+                                      return spotIndexes
+                                          .map((index) => null)
+                                          .toList();
+                                    }
+
+                                    // Return proper indicators only for baby's weight line
+                                    return spotIndexes.map((index) {
+                                      return TouchedSpotIndicatorData(
+                                        FlLine(
+                                          color: const Color(0xFF1873EA),
+                                          strokeWidth: 2,
+                                        ),
+                                        FlDotData(
+                                          getDotPainter: (
+                                            spot,
+                                            percent,
+                                            barData,
+                                            index,
+                                          ) {
+                                            return FlDotCirclePainter(
+                                              radius: 8,
+                                              color: const Color(0xFF1873EA),
+                                              strokeWidth: 3,
+                                              strokeColor: Colors.white,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }).toList();
+                                  }, */
+                                  getTouchedSpotIndicator: (
+                                    LineChartBarData barData,
+                                    List<int> spotIndexes,
+                                  ) {
+                                    // Check if this is the baby's weight line by comparing characteristics
+                                    bool isBabyLine =
+                                        barData.spots.length == spots.length &&
+                                        barData.color ==
+                                            const Color(0xFF1873EA) &&
+                                        barData.barWidth == 4;
 
                                     if (!isBabyLine) {
                                       // Return null indicators for WHO lines and regions
@@ -2291,7 +2334,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     getTooltipItems: (
                                       List<LineBarSpot> touchedSpots,
                                     ) {
-                                      // ... keep your existing getTooltipItems logic exactly as is
+                                      /* // ... keep your existing getTooltipItems logic exactly as is
                                       // Find the baby's weight line index (it should be the last line)
                                       int babyLineIndex = -1;
 
@@ -2441,157 +2484,186 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                       }
 
                                       return tooltipItems;
+                                    }, */
+                                      List<LineTooltipItem?> tooltipItems = [];
+
+                                      for (
+                                        int i = 0;
+                                        i < touchedSpots.length;
+                                        i++
+                                      ) {
+                                        LineBarSpot spot = touchedSpots[i];
+
+                                        // Check if this is the baby's weight line by comparing data characteristics
+                                        bool isBabyWeightLine = false;
+
+                                        // Simple check: if the spot's barIndex corresponds to the baby's line
+                                        // The baby's line should be the last one in the lineBarsData array
+                                        int expectedBabyLineIndex = 0;
+
+                                        // Count all the lines that come before baby's line
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'minus2SD',
+                                              'minus3SD',
+                                              Colors.red.withOpacity(0.15),
+                                            ).length;
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'median',
+                                              'minus2SD',
+                                              Colors.orange.withOpacity(0.15),
+                                            ).length;
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'plus2SD',
+                                              'median',
+                                              Colors.orange.withOpacity(0.15),
+                                            ).length;
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'plus3SD',
+                                              'plus2SD',
+                                              Colors.red.withOpacity(0.15),
+                                            ).length;
+
+                                        // Add WHO standard lines
+                                        if (_whoStandardLines.containsKey(
+                                          'minus3SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'minus2SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'median',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'plus2SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'plus3SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+
+                                        // Check if this is the baby's line
+                                        isBabyWeightLine =
+                                            (spot.barIndex ==
+                                                expectedBabyLineIndex);
+
+                                        if (isBabyWeightLine) {
+                                          // Find the corresponding day number
+                                          int? dayNumber =
+                                              _findDayNumberForSpot(spot);
+
+                                          if (dayNumber != null &&
+                                              dayNumber > 0) {
+                                            final date =
+                                                dayToDateMap[dayNumber]!;
+                                            final dateStr = DateFormat(
+                                              'd MMM yyyy',
+                                            ).format(date);
+                                            final currentWeight = spot.y;
+
+                                            String comparisonMessage;
+                                            Color messageColor =
+                                                Colors.blue.shade700;
+
+                                            final previousEntry =
+                                                _findPreviousWeightEntry(
+                                                  dayNumber,
+                                                );
+                                            if (previousEntry == null) {
+                                              comparisonMessage =
+                                                  "First weight entry";
+                                              messageColor =
+                                                  Colors.blue.shade700;
+                                            } else {
+                                              final prevWeight =
+                                                  previousEntry['weight']
+                                                      as double;
+                                              final prevDate =
+                                                  previousEntry['date']
+                                                      as DateTime;
+                                              final prevDateStr = DateFormat(
+                                                'd MMM yyyy',
+                                              ).format(prevDate);
+                                              final weightDiff =
+                                                  currentWeight - prevWeight;
+
+                                              if (weightDiff > 0) {
+                                                comparisonMessage =
+                                                    "Weight increased by ${weightDiff.toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.green.shade700;
+                                              } else if (weightDiff < 0) {
+                                                comparisonMessage =
+                                                    "Weight decreased by ${(-weightDiff).toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.orange.shade700;
+                                              } else {
+                                                comparisonMessage =
+                                                    "Weight maintained since $prevDateStr (${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.blue.shade700;
+                                              }
+                                            }
+
+                                            String weightText =
+                                                '${currentWeight.toStringAsFixed(1)} kg';
+
+                                            tooltipItems.add(
+                                              LineTooltipItem(
+                                                '$dateStr\n$weightText\n$comparisonMessage',
+                                                TextStyle(
+                                                  color: messageColor,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
+                                                  height: 1.4,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            tooltipItems.add(null);
+                                          }
+                                        } else {
+                                          // Hide tooltip for WHO lines and regions
+                                          tooltipItems.add(null);
+                                        }
+                                      }
+
+                                      return tooltipItems;
                                     },
                                   ),
 
                                   handleBuiltInTouches: true,
                                   touchSpotThreshold: 20,
                                 ),
-                                /* lineBarsData: [
-                                  // WHO STANDARD LINES FIRST (these won't be touchable)
 
-                                  // Region slices first
-                                  ...(_createCurvedRegionSlices(
-                                    'minus2SD',
-                                    'minus3SD',
-                                    Colors.red.withOpacity(0.1),
-                                  )),
-                                  ...(_createCurvedRegionSlices(
-                                    'median',
-                                    'minus2SD',
-                                    Colors.orange.withOpacity(0.1),
-                                  )),
-                                  ...(_createCurvedRegionSlices(
-                                    'plus2SD',
-                                    'median',
-                                    Colors.orange.withOpacity(0.1),
-                                  )),
-                                  ...(_createCurvedRegionSlices(
-                                    'plus3SD',
-                                    'plus2SD',
-                                    Colors.red.withOpacity(0.1),
-                                  )),
-
-                                  // WHO reference lines
-                                  if (_whoStandardLines.containsKey('minus3SD'))
-                                    LineChartBarData(
-                                      spots: _whoStandardLines['minus3SD']!,
-                                      isCurved: true,
-                                      color: Colors.red.withOpacity(1),
-                                      barWidth: 1.5,
-                                      isStrokeCapRound: true,
-                                      dotData: FlDotData(
-                                        show: false,
-                                      ), // Important: no dots for WHO lines
-                                      dashArray: [6, 4],
-                                      belowBarData: BarAreaData(show: false),
-                                      // Add this to prevent touch detection:
-                                      preventCurveOverShooting: true,
-                                    ),
-                                  if (_whoStandardLines.containsKey('minus2SD'))
-                                    LineChartBarData(
-                                      spots: _whoStandardLines['minus2SD']!,
-                                      isCurved: true,
-                                      color: Colors.orange.withOpacity(1),
-                                      barWidth: 1.5,
-                                      isStrokeCapRound: true,
-                                      dotData: FlDotData(show: false),
-                                      dashArray: [6, 4],
-                                      belowBarData: BarAreaData(show: false),
-                                      preventCurveOverShooting: true,
-                                    ),
-                                  if (_whoStandardLines.containsKey('median'))
-                                    LineChartBarData(
-                                      spots: _whoStandardLines['median']!,
-                                      isCurved: true,
-                                      color: Colors.green,
-                                      barWidth: 2.5,
-                                      isStrokeCapRound: true,
-                                      dotData: FlDotData(show: false),
-                                      belowBarData: BarAreaData(show: false),
-                                      preventCurveOverShooting: true,
-                                    ),
-                                  if (_whoStandardLines.containsKey('plus2SD'))
-                                    LineChartBarData(
-                                      spots: _whoStandardLines['plus2SD']!,
-                                      isCurved: true,
-                                      color: Colors.orange.withOpacity(1),
-                                      barWidth: 1.5,
-                                      isStrokeCapRound: true,
-                                      dotData: FlDotData(show: false),
-                                      dashArray: [6, 4],
-                                      belowBarData: BarAreaData(show: false),
-                                      preventCurveOverShooting: true,
-                                    ),
-                                  if (_whoStandardLines.containsKey('plus3SD'))
-                                    LineChartBarData(
-                                      spots: _whoStandardLines['plus3SD']!,
-                                      isCurved: true,
-                                      color: Colors.red.withOpacity(1),
-                                      barWidth: 1.5,
-                                      isStrokeCapRound: true,
-                                      dotData: FlDotData(show: false),
-                                      dashArray: [6, 4],
-                                      belowBarData: BarAreaData(show: false),
-                                      preventCurveOverShooting: true,
-                                    ),
-
-                                  // BABY'S WEIGHT LINE LAST (this will be the only touchable line)
-                                  LineChartBarData(
-                                    spots: spots,
-                                    isCurved: true,
-                                    color: const Color(
-                                      0xFF1873EA,
-                                    ), // Consistent color
-                                    barWidth: 4, // Consistent width
-                                    isStrokeCapRound: true,
-                                    dotData: FlDotData(
-                                      // Consistent dot configuration
-                                      show: true,
-                                      getDotPainter: (
-                                        spot,
-                                        percent,
-                                        barData,
-                                        index,
-                                      ) {
-                                        Color dotColor =
-                                            index < spotColors.length
-                                                ? spotColors[index]
-                                                : const Color(0xFF1873EA);
-
-                                        return FlDotCirclePainter(
-                                          radius: 6,
-                                          color: dotColor,
-                                          strokeWidth: 3,
-                                          strokeColor: Colors.white,
-                                        );
-                                      },
-                                    ),
-                                    belowBarData: BarAreaData(show: false),
-                                    // This line will be touchable
-                                  ),
-                                ], */
                                 lineBarsData: [
                                   // Colored regions between WHO lines
                                   ...(_createCurvedRegionSlices(
                                     'minus2SD',
                                     'minus3SD',
-                                    Colors.red.withOpacity(0.15),
+                                    Colors.red.withOpacity(0.2),
                                   )),
                                   ...(_createCurvedRegionSlices(
                                     'median',
                                     'minus2SD',
-                                    Colors.orange.withOpacity(0.15),
+                                    Colors.orange.withOpacity(0.2),
                                   )),
                                   ...(_createCurvedRegionSlices(
                                     'plus2SD',
                                     'median',
-                                    Colors.orange.withOpacity(0.15),
+                                    Colors.orange.withOpacity(0.2),
                                   )),
                                   ...(_createCurvedRegionSlices(
                                     'plus3SD',
                                     'plus2SD',
-                                    Colors.red.withOpacity(0.15),
+                                    Colors.red.withOpacity(0.2),
                                   )),
 
                                   // All WHO standard lines (but with no touch interaction)
