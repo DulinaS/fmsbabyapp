@@ -8,6 +8,9 @@ import 'child_service.dart';
 import 'child_model.dart';
 import 'dart:math' as math;
 
+//enum for chart timing
+enum ChartTimeRange { oneMonth, threeMonths, sixMonths }
+
 class GrowthMilestonePage extends StatefulWidget {
   final String childId;
 
@@ -29,6 +32,12 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
   // For WHO standard reference lines
   Map<String, List<FlSpot>> _whoStandardLines = {};
   bool _isLoadingStandards = false;
+
+  // Add these new state variables
+  ChartTimeRange selectedTimeRange = ChartTimeRange.oneMonth; // Default
+  Map<int, double> _filteredWeightData = {};
+  DateTime? _actualStartDate;
+  DateTime? _actualEndDate;
 
   late ChildService _childService;
   Map<int, Map<String, dynamic>> dayData = {}; // Includes weight, date, etc.
@@ -54,7 +63,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       .instance
       .collection('growthStandards');
 
-  @override
+  /* @override
   void initState() {
     super.initState();
 
@@ -80,6 +89,34 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         _loadWHOStandardLines();
       }
     });
+  } */
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize date controller with current date
+    _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
+
+    // Initialize the child service with current user ID
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _childService = ChildService(currentUser.uid);
+      _loadChildData();
+    } else {
+      // Handle not logged in case (redirect to login or show error)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/login');
+      });
+    }
+
+    // Set default time range and trigger loading WHO standards after child data is loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_child != null && !_isLoadingStandards && _whoStandardLines.isEmpty) {
+        selectedTimeRange = ChartTimeRange.oneMonth; // Always default to 1M
+        _isLoadingStandards = true;
+        _loadWHOStandardLines();
+      }
+    });
   }
 
   @override
@@ -90,67 +127,202 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     super.dispose();
   }
 
-  /* Future<void> _loadWHOStandardLines() async {
-    if (_child == null) return;
+  /* Map<String, DateTime> _calculateDateRange() {
+    DateTime endDate = DateTime.now();
+    DateTime startDate;
 
-    try {
-      final growthStandardService = GrowthStandardService();
-
-      // Determine time range for chart - extend to at least 6 months
-      int maxDays = 180; // Default to 6 months minimum
-
-      if (dayToDateMap.isNotEmpty) {
-        // Find latest date in data
-        final latestDate = dayToDateMap.values.reduce(
-          (a, b) => a.isAfter(b) ? a : b,
-        );
-
-        // Calculate days from birth to latest date plus 60 days buffer
-        int daysFromBirthToLatest =
-            latestDate.difference(_child!.dateOfBirth).inDays + 60;
-
-        // Use the larger of 180 days or actual data range
-        maxDays = daysFromBirthToLatest > 180 ? daysFromBirthToLatest : 180;
-      }
-
-      // Round to next month
-      maxDays = (maxDays ~/ 30 + 1) * 30;
-
-      // Get standard lines data
-      final standardLinesData = await growthStandardService
-          .getStandardLinesData(
-            _child!.gender,
-            _child!.dateOfBirth,
-            maxDays: maxDays,
-          );
-
-      // Convert to FlSpot format - ALWAYS in kg
-      Map<String, List<FlSpot>> lines = {};
-      standardLinesData.forEach((key, pointList) {
-        lines[key] =
-            pointList.map((point) {
-              // Always weight in kg for the chart
-              double yValue = point['y'] as double;
-              return FlSpot(point['x'] as double, yValue);
-            }).toList();
-      });
-
-      if (mounted) {
-        setState(() {
-          _whoStandardLines = lines;
-          _isLoadingStandards = false;
-        });
-      }
-    } catch (e) {
-      print('Error loading WHO standards: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingStandards = false;
-        });
-      }
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        startDate = endDate.subtract(Duration(days: 30));
+        break;
+      case ChartTimeRange.threeMonths:
+        startDate = endDate.subtract(Duration(days: 90));
+        break;
+      case ChartTimeRange.sixMonths:
+        startDate = endDate.subtract(Duration(days: 180));
+        break;
     }
+
+    // If calculated start date is before birth, use birth date
+    if (_child != null && startDate.isBefore(_child!.dateOfBirth)) {
+      startDate = _child!.dateOfBirth;
+    }
+
+    return {'start': normalizeDate(startDate), 'end': normalizeDate(endDate)};
   } */
-  Future<void> _loadWHOStandardLines() async {
+  Map<String, dynamic> _calculateDateRange() {
+    DateTime endDate = DateTime.now();
+    DateTime startDate;
+    int targetDays;
+
+    // Get target days for each range
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        targetDays = 30;
+        break;
+      case ChartTimeRange.threeMonths:
+        targetDays = 90;
+        break;
+      case ChartTimeRange.sixMonths:
+        targetDays = 180;
+        break;
+    }
+
+    // Calculate ideal start date
+    startDate = endDate.subtract(Duration(days: targetDays));
+
+    // If baby is younger than target range, use birth date
+    bool isFromBirth = false;
+    if (_child != null && startDate.isBefore(_child!.dateOfBirth)) {
+      startDate = _child!.dateOfBirth;
+      isFromBirth = true;
+    }
+
+    // Calculate actual days in range
+    int actualDays = endDate.difference(startDate).inDays;
+
+    return {
+      'start': normalizeDate(startDate),
+      'end': normalizeDate(endDate),
+      'actualDays': actualDays,
+      'targetDays': targetDays,
+      'isFromBirth': isFromBirth,
+    };
+  }
+
+  ChartTimeRange _getDefaultTimeRange() {
+    if (_child == null) return ChartTimeRange.oneMonth;
+
+    final babyAgeInDays = DateTime.now().difference(_child!.dateOfBirth).inDays;
+
+    // Auto-select the best range based on age
+    if (babyAgeInDays >= 180)
+      return ChartTimeRange.threeMonths; // 6+ months old
+    if (babyAgeInDays >= 90) return ChartTimeRange.threeMonths; // 3+ months old
+    return ChartTimeRange.oneMonth; // Under 3 months
+  }
+
+  //Individual time range button
+  Widget _buildTimeRangeButton(String label, ChartTimeRange range) {
+    final isSelected = selectedTimeRange == range;
+
+    return ElevatedButton(
+      onPressed: () => _updateChartTimeRange(range),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? Color(0xFF1873EA) : Colors.grey[200],
+        foregroundColor: isSelected ? Colors.white : Colors.grey[600],
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: isSelected ? 3 : 1,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+    );
+  }
+
+  //Build Time range buttons
+  Widget _buildTimeRangeButtons() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildTimeRangeButton("1M", ChartTimeRange.oneMonth),
+          _buildTimeRangeButton("3M", ChartTimeRange.threeMonths),
+          _buildTimeRangeButton("6M", ChartTimeRange.sixMonths),
+        ],
+      ),
+    );
+  }
+
+  //Update chart time
+  void _updateChartTimeRange(ChartTimeRange newRange) {
+    setState(() {
+      selectedTimeRange = newRange;
+
+      // Filter existing weight data for selected time range
+      _filterWeightDataForTimeRange();
+
+      // Reload WHO standards for this time range
+      if (_child != null) {
+        _isLoadingStandards = true;
+        _loadWHOStandardLines();
+      }
+    });
+  }
+
+  //Filter weight data
+  /* void _filterWeightDataForTimeRange() {
+    // Calculate date range based on selected time range
+    DateTime endDate = DateTime.now();
+    DateTime startDate;
+
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        startDate = endDate.subtract(Duration(days: 30));
+        break;
+      case ChartTimeRange.threeMonths:
+        startDate = endDate.subtract(Duration(days: 90));
+        break;
+      case ChartTimeRange.sixMonths:
+        startDate = endDate.subtract(Duration(days: 180));
+        break;
+    }
+
+    // Filter existing baby weight data for this time range
+    _filteredWeightData = {};
+    weightData.forEach((dayNumber, weight) {
+      if (dayToDateMap.containsKey(dayNumber)) {
+        DateTime entryDate = dayToDateMap[dayNumber]!;
+        if (entryDate.isAfter(startDate) && entryDate.isBefore(endDate)) {
+          _filteredWeightData[dayNumber] = weight;
+        }
+      }
+    });
+  } */
+
+  /* void _filterWeightDataForTimeRange() {
+    final dateRange = _calculateDateRange();
+    _actualStartDate = dateRange['start'];
+    _actualEndDate = dateRange['end'];
+
+    // Filter existing baby weight data for this time range
+    _filteredWeightData = {};
+    weightData.forEach((dayNumber, weight) {
+      if (dayToDateMap.containsKey(dayNumber)) {
+        DateTime entryDate = normalizeDate(dayToDateMap[dayNumber]!);
+        if ((entryDate.isAfter(_actualStartDate!) ||
+                entryDate.isAtSameMomentAs(_actualStartDate!)) &&
+            (entryDate.isBefore(_actualEndDate!) ||
+                entryDate.isAtSameMomentAs(_actualEndDate!))) {
+          _filteredWeightData[dayNumber] = weight;
+        }
+      }
+    });
+  } */
+  void _filterWeightDataForTimeRange() {
+    final dateRange = _calculateDateRange();
+    _actualStartDate = dateRange['start'] as DateTime;
+    _actualEndDate = dateRange['end'] as DateTime;
+
+    // Filter existing baby weight data for this time range
+    _filteredWeightData = {};
+    weightData.forEach((dayNumber, weight) {
+      if (dayToDateMap.containsKey(dayNumber)) {
+        DateTime entryDate = normalizeDate(dayToDateMap[dayNumber]!);
+        if ((entryDate.isAfter(_actualStartDate!) ||
+                entryDate.isAtSameMomentAs(_actualStartDate!)) &&
+            (entryDate.isBefore(_actualEndDate!) ||
+                entryDate.isAtSameMomentAs(_actualEndDate!))) {
+          _filteredWeightData[dayNumber] = weight;
+        }
+      }
+    });
+  }
+
+  /*   Future<void> _loadWHOStandardLines() async {
     if (_child == null) return;
 
     try {
@@ -193,6 +365,121 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
               double yValue = point['y'] as double;
               return FlSpot(point['x'] as double, yValue);
             }).toList();
+      });
+
+      if (mounted) {
+        setState(() {
+          _whoStandardLines = lines;
+          _isLoadingStandards = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading WHO standards: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingStandards = false;
+        });
+      }
+    }
+  } */
+
+  /* Future<void> _loadWHOStandardLines() async {
+    if (_child == null) return;
+
+    try {
+      final growthStandardService = GrowthStandardService();
+
+      // Calculate max days based on selected time range (always full range)
+      int maxDays;
+      switch (selectedTimeRange) {
+        case ChartTimeRange.oneMonth:
+          maxDays = 35; // 30 days + 5 day buffer
+          break;
+        case ChartTimeRange.threeMonths:
+          maxDays = 95; // 90 days + 5 day buffer
+          break;
+        case ChartTimeRange.sixMonths:
+          maxDays = 185; // 180 days + 5 day buffer
+          break;
+      }
+
+      // Get standard lines data for the full time range
+      final standardLinesData = await growthStandardService
+          .getStandardLinesData(
+            _child!.gender,
+            _child!.dateOfBirth,
+            maxDays: maxDays,
+          );
+
+      // Convert to FlSpot format
+      Map<String, List<FlSpot>> lines = {};
+      standardLinesData.forEach((key, pointList) {
+        lines[key] =
+            pointList.map((point) {
+              double yValue = point['y'] as double;
+              return FlSpot(point['x'] as double, yValue);
+            }).toList();
+      });
+
+      if (mounted) {
+        setState(() {
+          _whoStandardLines = lines;
+          _isLoadingStandards = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading WHO standards: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingStandards = false;
+        });
+      }
+    }
+  } */
+  Future<void> _loadWHOStandardLines() async {
+    if (_child == null) return;
+
+    try {
+      final growthStandardService = GrowthStandardService();
+      final dateRange = _calculateDateRange();
+      final targetDays = dateRange['targetDays'] as int;
+
+      // Always generate WHO standards for the full target range (30, 90, or 180 days)
+      // This ensures we have reference lines even for young babies
+      final maxDays = targetDays + 5; // Add small buffer
+
+      // Get standard lines data for the full target range
+      final standardLinesData = await growthStandardService
+          .getStandardLinesData(
+            _child!.gender,
+            _child!.dateOfBirth,
+            maxDays: maxDays,
+          );
+
+      // Convert to FlSpot format - but adjust X coordinates for the time range
+      Map<String, List<FlSpot>> lines = {};
+
+      standardLinesData.forEach((key, pointList) {
+        List<FlSpot> adjustedSpots = [];
+
+        for (var point in pointList) {
+          double originalX = point['x'] as double; // Days since birth
+          double yValue = point['y'] as double;
+
+          // Calculate baby's age at start of range
+          final babyAgeAtRangeStart =
+              _actualStartDate!.difference(_child!.dateOfBirth).inDays;
+
+          // Adjust X coordinate to be relative to range start
+          double adjustedX = originalX - babyAgeAtRangeStart;
+
+          // Only include points that fall within our display range
+          if (adjustedX >= -1 && adjustedX <= targetDays + 1) {
+            adjustedSpots.add(FlSpot(adjustedX, yValue));
+          }
+        }
+
+        lines[key] = adjustedSpots;
       });
 
       if (mounted) {
@@ -621,8 +908,124 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         setState(() {
           _isLoading = false;
         });
+        _filterWeightDataForTimeRange();
       }
     }
+  }
+
+  /* Widget _buildTimeRangeDisplay() {
+    if (_actualStartDate == null || _actualEndDate == null) {
+      return SizedBox();
+    }
+
+    // Calculate display text
+    String rangeText;
+    String timeRangeLabel;
+
+    final daysDifference = _actualEndDate!.difference(_actualStartDate!).inDays;
+    final isFromBirth =
+        _child != null &&
+        _actualStartDate!.isAtSameMomentAs(normalizeDate(_child!.dateOfBirth));
+
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        timeRangeLabel = isFromBirth ? "Since Birth" : "Last 1 Month";
+        break;
+      case ChartTimeRange.threeMonths:
+        timeRangeLabel = isFromBirth ? "Since Birth" : "Last 3 Months";
+        break;
+      case ChartTimeRange.sixMonths:
+        timeRangeLabel = isFromBirth ? "Since Birth" : "Last 6 Months";
+        break;
+    }
+
+    rangeText =
+        "${DateFormat('d MMM yyyy').format(_actualStartDate!)} - ${DateFormat('d MMM yyyy').format(_actualEndDate!)}";
+
+    if (isFromBirth && daysDifference < 30) {
+      rangeText += " (${daysDifference + 1} days)";
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        children: [
+          Text(
+            timeRangeLabel,
+            style: TextStyle(
+              color: Color(0xFF1873EA),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            rangeText,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  } */
+  Widget _buildTimeRangeDisplay() {
+    if (_actualStartDate == null || _actualEndDate == null) {
+      return SizedBox();
+    }
+
+    final dateRange = _calculateDateRange();
+    final isFromBirth = dateRange['isFromBirth'] as bool;
+    final actualDays = dateRange['actualDays'] as int;
+
+    // Calculate display text
+    String timeRangeLabel;
+
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        timeRangeLabel = isFromBirth ? "Since Birth" : "Last 1 Month";
+        break;
+      case ChartTimeRange.threeMonths:
+        timeRangeLabel = isFromBirth ? "Since Birth" : "Last 3 Months";
+        break;
+      case ChartTimeRange.sixMonths:
+        timeRangeLabel = isFromBirth ? "Since Birth" : "Last 6 Months";
+        break;
+    }
+
+    String rangeText =
+        "${DateFormat('d MMM yyyy').format(_actualStartDate!)} - ${DateFormat('d MMM yyyy').format(_actualEndDate!)}";
+
+    if (isFromBirth) {
+      rangeText += " (${actualDays + 1} days)";
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        children: [
+          Text(
+            timeRangeLabel,
+            style: TextStyle(
+              color: Color(0xFF1873EA),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            rangeText,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void scrollToSelectedDay() {
@@ -928,6 +1331,9 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                               SizedBox(height: 24),
                               _buildInfoCard(),
                               SizedBox(height: 24),
+                              _buildTimeRangeButtons(),
+                              _buildTimeRangeDisplay(),
+                              SizedBox(height: 16),
                               _buildGrowthChart(),
                               SizedBox(height: 24),
                               _buildWeightAndDateInput(),
@@ -1481,7 +1887,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
-  Widget _buildGrowthChart() {
+  /* Widget _buildGrowthChart() {
     if (weightData.isEmpty) {
       return Container(
         width: double.infinity,
@@ -2421,6 +2827,980 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         ),
       ),
     );
+  } */
+  Widget _buildGrowthChart() {
+    if (_filteredWeightData.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 420,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          shadows: [
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.info_outline, size: 48, color: Colors.grey.shade400),
+              SizedBox(height: 12),
+              Text(
+                'No weight data in selected time range',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Try selecting a different time period or add weight data',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Sort entries by date for chronological chart
+    List<MapEntry<int, double>> sortedEntries = [];
+
+    for (var entry in _filteredWeightData.entries) {
+      if (dayToDateMap.containsKey(entry.key)) {
+        sortedEntries.add(entry);
+      }
+    }
+
+    sortedEntries.sort((a, b) {
+      final dateA = dayToDateMap[a.key]!;
+      final dateB = dayToDateMap[b.key]!;
+      return dateA.compareTo(dateB);
+    });
+
+    // Calculate days since birth for x-axis and prepare spots data
+    /* List<FlSpot> spots = [];
+    List<Color> spotColors = [];
+
+    for (var entry in sortedEntries) {
+      final dayNumber = entry.key;
+      final date = dayToDateMap[dayNumber]!;
+      final birthDate = _child!.dateOfBirth;
+      final daysSinceBirth = date.difference(birthDate).inDays;
+      final weightValue = entry.value;
+
+      spots.add(FlSpot(daysSinceBirth.toDouble(), weightValue)); */
+    // Calculate days within time range for x-axis and prepare spots data
+    List<FlSpot> spots = [];
+    List<Color> spotColors = [];
+
+    for (var entry in sortedEntries) {
+      final dayNumber = entry.key;
+      final date = dayToDateMap[dayNumber]!;
+      final weightValue = entry.value;
+
+      // Calculate days from range start (not from birth)
+      final daysFromRangeStart = date.difference(_actualStartDate!).inDays;
+
+      spots.add(FlSpot(daysFromRangeStart.toDouble(), weightValue));
+
+      // Improved color coding based on weight category
+      Color spotColor = const Color(0xFF1873EA); // Default blue for normal
+      if (dayData.containsKey(dayNumber) &&
+          dayData[dayNumber]!.containsKey('category')) {
+        final category = dayData[dayNumber]!['category'];
+        switch (category) {
+          case 'minus3SD': // Severely Underweight
+            spotColor = Colors.red.shade600;
+            break;
+          case 'minus2SD': // Underweight
+            spotColor = Colors.orange.shade600;
+            break;
+          case 'normal': // Normal
+            spotColor = Colors.green.shade600;
+            break;
+          case 'plus2SD': // Overweight
+            spotColor = Colors.orange.shade600;
+            break;
+          case 'plus3SD': // Severely Overweight
+            spotColor = Colors.red.shade600;
+            break;
+          default:
+            spotColor = const Color(0xFF1873EA);
+        }
+      }
+      spotColors.add(spotColor);
+    }
+
+    if (spots.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 420,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          shadows: [
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            'No weight data with dates available',
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final minX = spots.map((e) => e.x).reduce((a, b) => a < b ? a : b);
+    final maxX = spots.map((e) => e.x).reduce((a, b) => a > b ? a : b);
+    final minY = spots.map((e) => e.y).reduce((a, b) => a < b ? a : b);
+    final maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+
+    /* // x axis calculation
+    double dataMaxX = maxX;
+    double whoMaxX = 0;
+    double whoMinX = double.infinity;
+
+    if (_whoStandardLines.isNotEmpty) {
+      for (var line in _whoStandardLines.values) {
+        if (line.isNotEmpty) {
+          double lineMaxX = line
+              .map((e) => e.x)
+              .reduce((a, b) => a > b ? a : b);
+          double lineMinX = line
+              .map((e) => e.x)
+              .reduce((a, b) => a < b ? a : b);
+          if (lineMaxX > whoMaxX) whoMaxX = lineMaxX;
+          if (lineMinX < whoMinX) whoMinX = lineMinX;
+        }
+      }
+    } else {
+      whoMaxX = 0;
+      whoMinX = 0;
+    }
+
+    double overallMaxX =
+        [dataMaxX, whoMaxX].reduce((a, b) => a > b ? a : b) + 5;
+    double overallMinX = [minX, whoMinX].reduce((a, b) => a < b ? a : b) - 5;
+    overallMinX = overallMinX < 0 ? 0 : overallMinX;
+
+    final minXAdjusted = overallMinX;
+    final maxXAdjusted = overallMaxX; */
+    // X-axis calculation - use actual range days
+    final dateRange = _calculateDateRange();
+    final actualDays = dateRange['actualDays'] as int;
+    final targetDays = dateRange['targetDays'] as int;
+
+    // Use the larger of actual days or target days for proper WHO line display
+    final maxDisplayDays = actualDays > targetDays ? actualDays : targetDays;
+
+    final minXAdjusted = -0.5; // Small buffer before start
+    final maxXAdjusted =
+        maxDisplayDays.toDouble() + 1.0; // Small buffer after end
+
+    //Y axis calculation
+    double finalMinY = minY;
+    double finalMaxY = maxY;
+
+    if (_whoStandardLines.isNotEmpty) {
+      for (var line in _whoStandardLines.values) {
+        if (line.isNotEmpty) {
+          var filteredLine =
+              line
+                  .where(
+                    (spot) =>
+                        spot.x >= (minXAdjusted) && spot.x <= (maxXAdjusted),
+                  )
+                  .toList();
+
+          if (filteredLine.isNotEmpty) {
+            final lineMinY = filteredLine
+                .map((e) => e.y)
+                .reduce((a, b) => a < b ? a : b);
+            final lineMaxY = filteredLine
+                .map((e) => e.y)
+                .reduce((a, b) => a > b ? a : b);
+
+            finalMinY = finalMinY < lineMinY ? finalMinY : lineMinY;
+            finalMaxY = finalMaxY > lineMaxY ? finalMaxY : lineMaxY;
+          }
+        }
+      }
+    }
+
+    double yRange = finalMaxY - finalMinY;
+    double yBuffer = yRange * 0.15;
+
+    finalMinY = (finalMinY - yBuffer).floorToDouble();
+    finalMaxY = (finalMaxY + yBuffer).ceilToDouble();
+
+    if (finalMaxY - finalMinY < 1.0) {
+      double midpoint = (finalMaxY + finalMinY) / 2;
+      finalMinY = midpoint - 0.5;
+      finalMaxY = midpoint + 0.5;
+    }
+
+    if (finalMinY > 0 && finalMinY < 1.0) {
+      finalMinY = 0;
+    }
+
+    if (_whoStandardLines.isEmpty && !_isLoadingStandards && _child != null) {
+      _isLoadingStandards = true;
+      _loadWHOStandardLines();
+    }
+
+    // Calculate chart width based on time range
+    double chartWidth;
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        chartWidth = 800;
+        break;
+      case ChartTimeRange.threeMonths:
+        chartWidth = 1000;
+        break;
+      case ChartTimeRange.sixMonths:
+        chartWidth = 1200;
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      height: 580, // Increased height significantly for more tooltip space
+      decoration: ShapeDecoration(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: 1.5,
+            color: const Color(0xFF1873EA).withOpacity(0.2),
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        shadows: [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          12.0,
+          16.0,
+          16.0,
+          3.0,
+        ), // Less left padding
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with improved styling
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF1873EA).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.trending_up,
+                          size: 20,
+                          color: Color(0xFF1873EA),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Flexible(
+                        // Use Flexible instead of no wrapping
+                        child: Text(
+                          'Weight Progress',
+                          style: TextStyle(
+                            color: const Color(0xFF1873EA),
+                            fontSize: 18,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis, // Handle overflow
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  // Wrap in Expanded
+                  flex: 2, // Give less space to the right side
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.end, // Align to the right
+                    children: [
+                      Flexible(
+                        // Make the weight unit container flexible
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8, // Reduced padding
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.monitor_weight_outlined,
+                                size: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Weight',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _showWHOStandardsInfo(context),
+                        child: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF1873EA).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: Color(0xFF1873EA),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+
+            // Improved Legend
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  width: 1.5,
+                ), // NEW
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildImprovedLegendItem(
+                    'Your Baby',
+                    const Color(0xFF1873EA),
+                    isLine: true,
+                    width: 3.0,
+                  ),
+                  _buildImprovedLegendItem(
+                    'WHO Median',
+                    Colors.green,
+                    isLine: true,
+                    width: 2.0,
+                  ),
+                  _buildImprovedLegendItem(
+                    'Normal Range',
+                    Colors.orange.withOpacity(0.8),
+                    isDashed: true,
+                  ),
+                  _buildImprovedLegendItem(
+                    'Extreme Range',
+                    Colors.red.withOpacity(0.8),
+                    isDashed: true,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+
+            // Chart with improved spacing
+            Expanded(
+              child:
+                  _isLoadingStandards && spots.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              color: Color(0xFF1873EA),
+                              strokeWidth: 3,
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'Loading WHO standards...',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : Padding(
+                        padding: const EdgeInsets.only(
+                          top: 16,
+                          right: 8,
+                        ), // Removed left padding
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Container(
+                            width: chartWidth,
+                            height: 380,
+                            child: LineChart(
+                              LineChartData(
+                                gridData: FlGridData(
+                                  show: true,
+                                  drawVerticalLine: true,
+                                  horizontalInterval: 1.0,
+                                  verticalInterval: _getVerticalInterval(),
+                                  getDrawingHorizontalLine: (value) {
+                                    return FlLine(
+                                      color: Colors.grey.shade200,
+                                      strokeWidth: 1,
+                                    );
+                                  },
+                                  getDrawingVerticalLine: (value) {
+                                    return FlLine(
+                                      color: Colors.grey.shade200,
+                                      strokeWidth: 0.8,
+                                    );
+                                  },
+                                ),
+                                titlesData: FlTitlesData(
+                                  show: true,
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 65,
+                                      getTitlesWidget: (value, meta) {
+                                        if (value < 0) {
+                                          return const SizedBox();
+                                        }
+
+                                        final birthDate = _child!.dateOfBirth;
+                                        final date = birthDate.add(
+                                          Duration(days: value.toInt()),
+                                        );
+
+                                        final month = DateFormat(
+                                          'MMM',
+                                        ).format(date);
+                                        final day = DateFormat(
+                                          'd',
+                                        ).format(date);
+
+                                        return SideTitleWidget(
+                                          angle: 0,
+                                          space: 8,
+                                          meta: meta,
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  day,
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade700,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  month,
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade600,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      interval: _getVerticalInterval(),
+                                    ),
+                                  ),
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (value, meta) {
+                                        if (value < 0) return const SizedBox();
+                                        if (value.round() != value)
+                                          return const SizedBox();
+
+                                        String valueText =
+                                            value.toInt().toString();
+
+                                        return SideTitleWidget(
+                                          angle: 0,
+                                          space: 12,
+                                          meta: meta,
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              valueText,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade700,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      reservedSize: 45,
+                                      interval: 1.0,
+                                    ),
+                                  ),
+                                  rightTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  topTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                ),
+                                borderData: FlBorderData(
+                                  show: true,
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                minX: minXAdjusted,
+                                maxX: maxXAdjusted,
+                                minY: finalMinY,
+                                maxY: finalMaxY + 0.5,
+                                clipData: FlClipData.all(),
+                                lineTouchData: LineTouchData(
+                                  getTouchedSpotIndicator: (
+                                    LineChartBarData barData,
+                                    List<int> spotIndexes,
+                                  ) {
+                                    // Check if this is the baby's weight line by comparing characteristics
+                                    bool isBabyLine =
+                                        barData.spots.length == spots.length &&
+                                        barData.color ==
+                                            const Color(0xFF1873EA) &&
+                                        barData.barWidth == 4;
+
+                                    if (!isBabyLine) {
+                                      // Return null indicators for WHO lines and regions
+                                      return spotIndexes
+                                          .map((index) => null)
+                                          .toList();
+                                    }
+
+                                    // Return proper indicators only for baby's weight line
+                                    return spotIndexes.map((index) {
+                                      return TouchedSpotIndicatorData(
+                                        FlLine(
+                                          color: const Color(0xFF1873EA),
+                                          strokeWidth: 2,
+                                        ),
+                                        FlDotData(
+                                          getDotPainter: (
+                                            spot,
+                                            percent,
+                                            barData,
+                                            index,
+                                          ) {
+                                            return FlDotCirclePainter(
+                                              radius: 8,
+                                              color: const Color(0xFF1873EA),
+                                              strokeWidth: 3,
+                                              strokeColor: Colors.white,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                  touchTooltipData: LineTouchTooltipData(
+                                    getTooltipColor:
+                                        (touchedSpot) => const Color.fromARGB(
+                                          255,
+                                          248,
+                                          245,
+                                          245,
+                                        ),
+                                    tooltipRoundedRadius: 16,
+                                    tooltipPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    tooltipMargin: 20,
+                                    fitInsideHorizontally: true,
+                                    fitInsideVertically: true,
+                                    tooltipBorder: BorderSide(
+                                      color: Colors.blueAccent,
+                                      width: 1.5,
+                                    ),
+
+                                    getTooltipItems: (
+                                      List<LineBarSpot> touchedSpots,
+                                    ) {
+                                      List<LineTooltipItem?> tooltipItems = [];
+
+                                      for (
+                                        int i = 0;
+                                        i < touchedSpots.length;
+                                        i++
+                                      ) {
+                                        LineBarSpot spot = touchedSpots[i];
+
+                                        // Check if this is the baby's weight line by comparing data characteristics
+                                        bool isBabyWeightLine = false;
+
+                                        // Simple check: if the spot's barIndex corresponds to the baby's line
+                                        // The baby's line should be the last one in the lineBarsData array
+                                        int expectedBabyLineIndex = 0;
+
+                                        // Count all the lines that come before baby's line
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'minus2SD',
+                                              'minus3SD',
+                                              Colors.red.withOpacity(0.15),
+                                            ).length;
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'median',
+                                              'minus2SD',
+                                              Colors.orange.withOpacity(0.15),
+                                            ).length;
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'plus2SD',
+                                              'median',
+                                              Colors.orange.withOpacity(0.15),
+                                            ).length;
+                                        expectedBabyLineIndex +=
+                                            _createCurvedRegionSlices(
+                                              'plus3SD',
+                                              'plus2SD',
+                                              Colors.red.withOpacity(0.15),
+                                            ).length;
+
+                                        // Add WHO standard lines
+                                        if (_whoStandardLines.containsKey(
+                                          'minus3SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'minus2SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'median',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'plus2SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+                                        if (_whoStandardLines.containsKey(
+                                          'plus3SD',
+                                        ))
+                                          expectedBabyLineIndex++;
+
+                                        // Check if this is the baby's line
+                                        isBabyWeightLine =
+                                            (spot.barIndex ==
+                                                expectedBabyLineIndex);
+
+                                        if (isBabyWeightLine) {
+                                          // Find the corresponding day number
+                                          int? dayNumber =
+                                              _findDayNumberForSpot(spot);
+
+                                          if (dayNumber != null &&
+                                              dayNumber > 0) {
+                                            final date =
+                                                dayToDateMap[dayNumber]!;
+                                            final dateStr = DateFormat(
+                                              'd MMM yyyy',
+                                            ).format(date);
+                                            final currentWeight = spot.y;
+
+                                            String comparisonMessage;
+                                            Color messageColor =
+                                                Colors.blue.shade700;
+
+                                            final previousEntry =
+                                                _findPreviousWeightEntry(
+                                                  dayNumber,
+                                                );
+                                            if (previousEntry == null) {
+                                              comparisonMessage =
+                                                  "First weight entry";
+                                              messageColor =
+                                                  Colors.blue.shade700;
+                                            } else {
+                                              final prevWeight =
+                                                  previousEntry['weight']
+                                                      as double;
+                                              final prevDate =
+                                                  previousEntry['date']
+                                                      as DateTime;
+                                              final prevDateStr = DateFormat(
+                                                'd MMM yyyy',
+                                              ).format(prevDate);
+                                              final weightDiff =
+                                                  currentWeight - prevWeight;
+
+                                              if (weightDiff > 0) {
+                                                comparisonMessage =
+                                                    "Weight increased by ${weightDiff.toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.green.shade700;
+                                              } else if (weightDiff < 0) {
+                                                comparisonMessage =
+                                                    "Weight decreased by ${(-weightDiff).toStringAsFixed(1)}kg since $prevDateStr (was ${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.orange.shade700;
+                                              } else {
+                                                comparisonMessage =
+                                                    "Weight maintained since $prevDateStr (${prevWeight.toStringAsFixed(1)}kg)";
+                                                messageColor =
+                                                    Colors.blue.shade700;
+                                              }
+                                            }
+
+                                            String weightText =
+                                                '${currentWeight.toStringAsFixed(1)} kg';
+
+                                            tooltipItems.add(
+                                              LineTooltipItem(
+                                                '$dateStr\n$weightText\n$comparisonMessage',
+                                                TextStyle(
+                                                  color: messageColor,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
+                                                  height: 1.4,
+                                                ),
+                                              ),
+                                            );
+                                          } else {
+                                            tooltipItems.add(null);
+                                          }
+                                        } else {
+                                          // Hide tooltip for WHO lines and regions
+                                          tooltipItems.add(null);
+                                        }
+                                      }
+
+                                      return tooltipItems;
+                                    },
+                                  ),
+
+                                  handleBuiltInTouches: true,
+                                  touchSpotThreshold: 20,
+                                ),
+                                lineBarsData: [
+                                  // Colored regions between WHO lines
+                                  ...(_createCurvedRegionSlices(
+                                    'minus2SD',
+                                    'minus3SD',
+                                    Colors.red.withOpacity(0.2),
+                                  )),
+                                  ...(_createCurvedRegionSlices(
+                                    'median',
+                                    'minus2SD',
+                                    Colors.orange.withOpacity(0.2),
+                                  )),
+                                  ...(_createCurvedRegionSlices(
+                                    'plus2SD',
+                                    'median',
+                                    Colors.orange.withOpacity(0.2),
+                                  )),
+                                  ...(_createCurvedRegionSlices(
+                                    'plus3SD',
+                                    'plus2SD',
+                                    Colors.red.withOpacity(0.2),
+                                  )),
+
+                                  // All WHO standard lines (but with no touch interaction)
+                                  if (_whoStandardLines.containsKey('minus3SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['minus3SD']!,
+                                      isCurved: true,
+                                      color: Colors.red.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+                                  if (_whoStandardLines.containsKey('minus2SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['minus2SD']!,
+                                      isCurved: true,
+                                      color: Colors.orange.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+                                  if (_whoStandardLines.containsKey('median'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['median']!,
+                                      isCurved: true,
+                                      color: Colors.green,
+                                      barWidth: 2.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+                                  if (_whoStandardLines.containsKey('plus2SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['plus2SD']!,
+                                      isCurved: true,
+                                      color: Colors.orange.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+                                  if (_whoStandardLines.containsKey('plus3SD'))
+                                    LineChartBarData(
+                                      spots: _whoStandardLines['plus3SD']!,
+                                      isCurved: true,
+                                      color: Colors.red.withOpacity(0.8),
+                                      barWidth: 1.5,
+                                      isStrokeCapRound: true,
+                                      dotData: FlDotData(show: false),
+                                      dashArray: [6, 4],
+                                      belowBarData: BarAreaData(show: false),
+                                      preventCurveOverShooting: true,
+                                    ),
+
+                                  // Baby's weight line (LAST - this ensures it's on top and touchable)
+                                  LineChartBarData(
+                                    spots: spots,
+                                    isCurved: true,
+                                    color: const Color(0xFF1873EA),
+                                    barWidth: 4,
+                                    isStrokeCapRound: true,
+                                    dotData: FlDotData(
+                                      show: true,
+                                      getDotPainter: (
+                                        spot,
+                                        percent,
+                                        barData,
+                                        index,
+                                      ) {
+                                        Color dotColor =
+                                            index < spotColors.length
+                                                ? spotColors[index]
+                                                : const Color(0xFF1873EA);
+                                        return FlDotCirclePainter(
+                                          radius: 6,
+                                          color: dotColor,
+                                          strokeWidth: 3,
+                                          strokeColor: Colors.white,
+                                        );
+                                      },
+                                    ),
+                                    belowBarData: BarAreaData(show: false),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper method for vertical interval based on time range
+  double _getVerticalInterval() {
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        return 3; // Every 3 days
+      case ChartTimeRange.threeMonths:
+        return 7; // Every week
+      case ChartTimeRange.sixMonths:
+        return 14; // Every 2 weeks
+    }
   }
 
   // Helper method for improved legend items
