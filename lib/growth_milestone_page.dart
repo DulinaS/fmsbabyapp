@@ -150,7 +150,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
 
     return {'start': normalizeDate(startDate), 'end': normalizeDate(endDate)};
   } */
-  Map<String, dynamic> _calculateDateRange() {
+  /* Map<String, dynamic> _calculateDateRange() {
     DateTime endDate = DateTime.now();
     DateTime startDate;
     int targetDays;
@@ -176,6 +176,51 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     if (_child != null && startDate.isBefore(_child!.dateOfBirth)) {
       startDate = _child!.dateOfBirth;
       isFromBirth = true;
+    }
+
+    // Calculate actual days in range
+    int actualDays = endDate.difference(startDate).inDays;
+
+    return {
+      'start': normalizeDate(startDate),
+      'end': normalizeDate(endDate),
+      'actualDays': actualDays,
+      'targetDays': targetDays,
+      'isFromBirth': isFromBirth,
+    };
+  } */
+
+  //Perplexity
+  Map<String, dynamic> _calculateDateRange() {
+    DateTime endDate = DateTime.now();
+    DateTime startDate;
+    int targetDays;
+
+    // Get target days for each range
+    switch (selectedTimeRange) {
+      case ChartTimeRange.oneMonth:
+        targetDays = 30;
+        break;
+      case ChartTimeRange.threeMonths:
+        targetDays = 90;
+        break;
+      case ChartTimeRange.sixMonths:
+        targetDays = 180;
+        break;
+    }
+
+    // Calculate ideal start date
+    startDate = endDate.subtract(Duration(days: targetDays));
+
+    // If baby is younger than target range OR if calculated start date is before birth, use birth date
+    bool isFromBirth = false;
+    if (_child != null) {
+      final birthDate = normalizeDate(_child!.dateOfBirth);
+      if (startDate.isBefore(birthDate) ||
+          endDate.difference(birthDate).inDays <= targetDays) {
+        startDate = birthDate;
+        isFromBirth = true;
+      }
     }
 
     // Calculate actual days in range
@@ -436,7 +481,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       }
     }
   } */
-  Future<void> _loadWHOStandardLines() async {
+  /* Future<void> _loadWHOStandardLines() async {
     if (_child == null) return;
 
     try {
@@ -476,6 +521,72 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
           // Only include points that fall within our display range
           if (adjustedX >= -1 && adjustedX <= targetDays + 1) {
             adjustedSpots.add(FlSpot(adjustedX, yValue));
+          }
+        }
+
+        lines[key] = adjustedSpots;
+      });
+
+      if (mounted) {
+        setState(() {
+          _whoStandardLines = lines;
+          _isLoadingStandards = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading WHO standards: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingStandards = false;
+        });
+      }
+    }
+  } */
+
+  //Perplexity
+  Future _loadWHOStandardLines() async {
+    if (_child == null) return;
+
+    try {
+      final growthStandardService = GrowthStandardService();
+      final dateRange = _calculateDateRange();
+      final isFromBirth = dateRange['isFromBirth'] as bool;
+
+      // Calculate baby's age at range start
+      final babyAgeAtRangeStart =
+          _actualStartDate!.difference(_child!.dateOfBirth).inDays;
+
+      // For WHO standards, we need to generate data for the baby's actual age range
+      final babyCurrentAge =
+          DateTime.now().difference(_child!.dateOfBirth).inDays;
+      final maxDaysForWHO = babyCurrentAge + 10; // Small buffer
+
+      // Get standard lines data for baby's full age range
+      final standardLinesData = await growthStandardService
+          .getStandardLinesData(
+            _child!.gender,
+            _child!.dateOfBirth,
+            maxDays: maxDaysForWHO,
+          );
+
+      // Convert to FlSpot format with consistent coordinate system
+      Map<String, List<FlSpot>> lines = {};
+
+      standardLinesData.forEach((key, pointList) {
+        List<FlSpot> adjustedSpots = [];
+
+        for (var point in pointList) {
+          double daysSinceBirth = point['x'] as double;
+          double yValue = point['y'] as double;
+
+          // Convert to days from range start (same as baby weight data)
+          double daysFromRangeStart = daysSinceBirth - babyAgeAtRangeStart;
+
+          // Only include points within our display range
+          final targetDays = dateRange['targetDays'] as int;
+          if (daysFromRangeStart >= -1 &&
+              daysFromRangeStart <= targetDays + 1) {
+            adjustedSpots.add(FlSpot(daysFromRangeStart, yValue));
           }
         }
 
@@ -1555,7 +1666,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
   }
 
   // Helper method to find day number for a specific spot
-  int? _findDayNumberForSpot(LineBarSpot spot) {
+  /* int? _findDayNumberForSpot(LineBarSpot spot) {
     // Look through our sorted entries to find matching day
     for (var entry in weightData.entries) {
       if (!dayToDateMap.containsKey(entry.key)) continue;
@@ -1572,6 +1683,27 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       }
     }
 
+    return null;
+  } */
+
+  //Perplexity
+  int? _findDayNumberForSpot(LineBarSpot spot) {
+    // Look through our sorted entries to find matching day
+    for (var entry in _filteredWeightData.entries) {
+      if (!dayToDateMap.containsKey(entry.key)) continue;
+
+      final date = dayToDateMap[entry.key]!;
+      final weightValue = entry.value;
+
+      // Calculate days from range start (consistent with chart coordinates)
+      final daysFromRangeStart = date.difference(_actualStartDate!).inDays;
+
+      // Check if this matches the touched spot (with small tolerance)
+      if ((daysFromRangeStart.toDouble() - spot.x).abs() < 1.0 &&
+          (weightValue - spot.y).abs() < 0.2) {
+        return entry.key;
+      }
+    }
     return null;
   }
 
@@ -3323,7 +3455,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                     sideTitles: SideTitles(
                                       showTitles: true,
                                       reservedSize: 65,
-                                      getTitlesWidget: (value, meta) {
+                                      /* getTitlesWidget: (value, meta) {
                                         if (value < 0) {
                                           return const SizedBox();
                                         }
@@ -3377,7 +3509,64 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                             ),
                                           ),
                                         );
+                                      }, */
+
+                                      //Perplexity
+                                      getTitlesWidget: (value, meta) {
+                                        if (value < 0) {
+                                          return const SizedBox();
+                                        }
+
+                                        // Calculate the actual date based on range start + days
+                                        final actualDate = _actualStartDate!
+                                            .add(Duration(days: value.toInt()));
+
+                                        final month = DateFormat(
+                                          'MMM',
+                                        ).format(actualDate);
+                                        final day = DateFormat(
+                                          'd',
+                                        ).format(actualDate);
+
+                                        return SideTitleWidget(
+                                          angle: 0,
+                                          space: 8,
+                                          meta: meta,
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  day,
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade700,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  month,
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade600,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
                                       },
+
                                       interval: _getVerticalInterval(),
                                     ),
                                   ),
