@@ -59,39 +59,15 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
   DateTime _selectedDate = DateTime.now();
   final TextEditingController _dateController = TextEditingController();
 
+  //To track if user selected a time range
+  bool _hasSelectedTimeRange = false;
+
   // Reference to the Firestore weight standards collection
   final CollectionReference _growthStandardsCollection = FirebaseFirestore
       .instance
       .collection('growthStandards');
 
   /* @override
-  void initState() {
-    super.initState();
-
-    // Initialize date controller with current date
-    _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
-
-    // Initialize the child service with current user ID
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      _childService = ChildService(currentUser.uid);
-      _loadChildData();
-    } else {
-      // Handle not logged in case (redirect to login or show error)
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacementNamed(context, '/login');
-      });
-    }
-
-    //trigger loading WHO standards after child data is loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_child != null && !_isLoadingStandards && _whoStandardLines.isEmpty) {
-        _isLoadingStandards = true;
-        _loadWHOStandardLines();
-      }
-    });
-  } */
-  @override
   void initState() {
     super.initState();
 
@@ -118,6 +94,28 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
         _loadWHOStandardLines();
       }
     });
+  } */
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize date controller with current date
+    _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
+
+    // Initialize the child service with current user ID
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _childService = ChildService(currentUser.uid);
+      _loadChildData();
+    } else {
+      // Handle not logged in case (redirect to login or show error)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/login');
+      });
+    }
+
+    // Don't set default time range or load WHO standards initially
   }
 
   @override
@@ -186,8 +184,27 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
   }
 
   //Individual time range button
-  Widget _buildTimeRangeButton(String label, ChartTimeRange range) {
+  /* Widget _buildTimeRangeButton(String label, ChartTimeRange range) {
     final isSelected = selectedTimeRange == range;
+
+    return ElevatedButton(
+      onPressed: () => _updateChartTimeRange(range),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? Color(0xFF1873EA) : Colors.grey[200],
+        foregroundColor: isSelected ? Colors.white : Colors.grey[600],
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: isSelected ? 3 : 1,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+    );
+  } */
+
+  Widget _buildTimeRangeButton(String label, ChartTimeRange range) {
+    final isSelected = _hasSelectedTimeRange && selectedTimeRange == range;
 
     return ElevatedButton(
       onPressed: () => _updateChartTimeRange(range),
@@ -220,10 +237,62 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     );
   }
 
+  Widget _buildTimeRangeInfo(String label, String description) {
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: Color(0xFF1873EA).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Color(0xFF1873EA),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            description,
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   //Update chart time
+  /* void _updateChartTimeRange(ChartTimeRange newRange) {
+    setState(() {
+      selectedTimeRange = newRange;
+
+      // Filter existing weight data for selected time range
+      _filterWeightDataForTimeRange();
+
+      // Reload WHO standards for this time range
+      if (_child != null) {
+        _isLoadingStandards = true;
+        _loadWHOStandardLines();
+      }
+    });
+  } */
+
   void _updateChartTimeRange(ChartTimeRange newRange) {
     setState(() {
       selectedTimeRange = newRange;
+      _hasSelectedTimeRange = true;
 
       // Filter existing weight data for selected time range
       _filterWeightDataForTimeRange();
@@ -2591,6 +2660,101 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
  */
 
   Widget _buildGrowthChart() {
+    if (!_hasSelectedTimeRange) {
+      return Container(
+        width: double.infinity,
+        height: 420,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: 1, color: const Color(0xFF1873EA)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          shadows: [
+            BoxShadow(
+              color: Color(0x1A000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.timeline,
+                size: 48,
+                color: Color(0xFF1873EA).withOpacity(0.7),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Please select an appropriate time range from above to view the graph',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF1873EA),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 20),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Today's date: ${DateFormat('dd MMM yyyy').format(DateTime.now())}",
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Time Range Information:',
+                      style: TextStyle(
+                        color: Colors.grey.shade800,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Column(
+                      children: [
+                        _buildTimeRangeInfo('1M', 'Last 30 days from today'),
+                        SizedBox(height: 8),
+                        _buildTimeRangeInfo('3M', 'Last 90 days from today'),
+                        SizedBox(height: 8),
+                        _buildTimeRangeInfo('6M', 'Last 180 days from today'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (_filteredWeightData.isEmpty) {
       return Container(
         width: double.infinity,
@@ -4404,80 +4568,6 @@ class DashedLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-/* class YAxisPainter extends CustomPainter {
-  final double minY;
-  final double maxY;
-
-  YAxisPainter({required this.minY, required this.maxY});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = Colors.grey.shade700
-          ..strokeWidth = 1.0;
-
-    final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
-
-    // Draw Y-axis labels
-    for (double value = minY.ceilToDouble(); value <= maxY; value += 1.0) {
-      if (value < 0) continue;
-      if (value.round() != value) continue;
-
-      // Calculate position
-      final yPosition =
-          size.height - ((value - minY) / (maxY - minY)) * size.height;
-
-      // Draw horizontal grid line indicator
-      canvas.drawLine(
-        Offset(size.width - 8, yPosition),
-        Offset(size.width, yPosition),
-        paint,
-      );
-
-      // Draw text label
-      textPainter.text = TextSpan(
-        text: value.toInt().toString(),
-        style: TextStyle(
-          color: Colors.grey.shade700,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-      textPainter.layout();
-
-      // Center the text vertically and position it
-      final textY = yPosition - (textPainter.height / 2);
-      final textX = size.width - textPainter.width - 12;
-
-      // Draw background container for text
-      final containerRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          textX - 6,
-          textY - 2,
-          textPainter.width + 12,
-          textPainter.height + 4,
-        ),
-        Radius.circular(6),
-      );
-
-      final containerPaint = Paint()..color = Colors.grey.shade100;
-
-      canvas.drawRRect(containerRect, containerPaint);
-
-      // Draw the text
-      textPainter.paint(canvas, Offset(textX, textY));
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate is! YAxisPainter ||
-        oldDelegate.minY != minY ||
-        oldDelegate.maxY != maxY;
-  }
-} */
 
 class YAxisPainter extends CustomPainter {
   final double minY;
