@@ -604,7 +604,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
             newWeightCategoryData[1] = weightCategory;
 
             newDayData[1] = {
-              'weight': '${_child!.weight!.toStringAsFixed(2)} kg',
+              'weight': '${(_child!.weight ?? 0).toStringAsFixed(2)} kg',
               'height': _child?.height?.toString() ?? 'No data',
               'circumference':
                   _child?.headCircumference?.toString() ?? 'No data',
@@ -652,7 +652,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
               newWeightCategoryData[1] = weightCategory;
 
               newDayData[1] = {
-                'weight': '${_child!.weight!.toStringAsFixed(2)} kg',
+                'weight': '${weight.toStringAsFixed(2)} kg',
                 'height': _child?.height?.toString() ?? 'No data',
                 'circumference':
                     _child?.headCircumference?.toString() ?? 'No data',
@@ -682,7 +682,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
             newWeightCategoryData[dayNumber] = weightCategory;
 
             newDayData[dayNumber] = {
-              'weight': '${_child!.weight!.toStringAsFixed(2)} kg',
+              'weight': '${weight.toStringAsFixed(2)} kg',
               'height': _child?.height?.toString() ?? 'No data',
               'circumference':
                   _child?.headCircumference?.toString() ?? 'No data',
