@@ -3380,7 +3380,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
       await _childService.updateCurrentWeightToLatest(widget.childId);
 
       // Step 4: Force immediate UI refresh
-      await _forceUIRefreshAfterDeletion();
+      //await _forceUIRefreshAfterDeletion();
 
       // Step 5: Refresh chart data
       await _refreshChartData();
@@ -3557,7 +3557,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     }
   }
 
-  // Add this as a new method
+  /*   // Add this as a new method
   Future<void> _forceUIRefreshAfterDeletion() async {
     try {
       // Clear current data
@@ -3582,7 +3582,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
     } catch (e) {
       debugPrint('Error forcing UI refresh: $e');
     }
-  }
+  } */
 
   // Refresh chart data when time range changes
   Future<void> _refreshChartData() async {
