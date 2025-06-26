@@ -3517,7 +3517,7 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                           // Baby's weight line (LAST - ensures it's on top and touchable)
                                           LineChartBarData(
                                             spots: spots,
-                                            isCurved: true,
+                                            isCurved: false,
                                             color: const Color(0xFF1873EA),
                                             barWidth: 4,
                                             isStrokeCapRound: true,
