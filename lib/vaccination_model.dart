@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+/* import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Vaccination {
   final String id;
@@ -76,4 +76,4 @@ class Vaccination {
       status: status ?? this.status,
     );
   }
-}
+} */

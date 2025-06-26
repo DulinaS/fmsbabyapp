@@ -806,7 +806,7 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
         );
       }
 
-      // Initialize vaccinations for the new child
+      /* // Initialize vaccinations for the new child
       await _childService.initializeVaccinations(childId);
 
       // Show success message
@@ -817,7 +817,7 @@ class _BabyDetailsScreenState extends State<BabyDetailsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-      }
+      } */
 
       // Navigate to home screen with the new child selected
       if (mounted) {

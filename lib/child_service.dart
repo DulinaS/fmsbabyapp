@@ -426,7 +426,7 @@ class ChildService {
     }
   }
 
-  Future<void> initializeVaccinations(String childId) async {
+  /* Future<void> initializeVaccinations(String childId) async {
     try {
       // Create a VaccinationService instance
       final vaccinationService = VaccinationService(_userId);
@@ -496,5 +496,5 @@ class ChildService {
         .collection('vaccinationRecords')
         .orderBy('dateGiven', descending: true)
         .snapshots();
-  }
+  } */
 }

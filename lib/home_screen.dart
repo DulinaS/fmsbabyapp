@@ -26,17 +26,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   Child? _selectedChild;
   int _selectedIndex = 0;
-  
+
   // Get current date
   final DateTime _currentDate = DateTime.now();
 
   // Updated feature list to use only childId without child object
   final List<Map<String, dynamic>> features = [
-    {
-      'label': 'Vaccinations',
-      'image': 'assets/images/vaccination.png',
-      'getPage': (String childId) => VaccinationPage(childId: childId),
-    },
     {
       'label': 'Growth',
       'image': 'assets/images/Milestones.png',
@@ -45,17 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
     {
       'label': 'Safety & First Aid',
       'image': 'assets/images/first_aid.png',
-      'getPage': (String childId) => PlaceholderPage(title: 'Safety & First Aid'),
+      'getPage':
+          (String childId) => PlaceholderPage(title: 'Safety & First Aid'),
     },
     {
       'label': 'Hospitals',
       'image': 'assets/images/Hospital.png',
       'getPage': (String childId) => PlaceholderPage(title: 'Hospitals'),
-    },
-    {
-      'label': 'Nutrition & Feeding',
-      'image': 'assets/images/nutrition.png',
-      'getPage': (String childId) => BabyFeedingFAQPage(),
     },
     {
       'label': 'Your New Born',
@@ -91,12 +82,13 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           setState(() {
             _children = children;
-            
+
             // If no child is selected and we have children, select the first one
-            if ((_selectedChildId == null || _selectedChild == null) && children.isNotEmpty) {
+            if ((_selectedChildId == null || _selectedChild == null) &&
+                children.isNotEmpty) {
               _selectedChildId = children[0].id;
             }
-            
+
             // Update selected child
             if (_selectedChildId != null) {
               _selectedChild = children.firstWhere(
@@ -104,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 orElse: () => children[0],
               );
             }
-            
+
             _isLoading = false;
           });
         }
@@ -127,7 +119,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await FirebaseAuth.instance.signOut();
       // Navigate to login screen after logout
-      Navigator.push(context, MaterialPageRoute(builder: (context) => LoginPage()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error signing out: ${e.toString()}')),
@@ -144,15 +139,15 @@ class _HomeScreenState extends State<HomeScreen> {
   // Generate a list of weeks for the horizontal scroller
   List<Map<String, String>> generateWeeks() {
     if (_selectedChild == null) return [];
-    
+
     final birthDate = _selectedChild!.dateOfBirth;
     final currentWeek = calculateWeeksSinceBirth(birthDate);
-    
+
     // Generate the current week and 3 weeks before and after
     List<Map<String, String>> weeks = [];
     for (int i = currentWeek - 3; i <= currentWeek + 3; i++) {
       if (i <= 0) continue; // Skip negative weeks
-      
+
       final weekDate = birthDate.add(Duration(days: (i - 1) * 7));
       weeks.add({
         'week': 'Week $i',
@@ -160,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'isActive': (i == currentWeek).toString(),
       });
     }
-    
+
     return weeks;
   }
 
@@ -305,7 +300,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.child_care, size: 84, color: Color(0xFF1873EA).withOpacity(0.6)),
+          Icon(
+            Icons.child_care,
+            size: 84,
+            color: Color(0xFF1873EA).withOpacity(0.6),
+          ),
           SizedBox(height: 24),
           Text(
             'No babies added yet',
@@ -318,10 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(height: 16),
           Text(
             'Add your first baby to get started',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           SizedBox(height: 32),
           ElevatedButton(
@@ -354,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    
+
     // Handle navigation based on index
     switch (index) {
       case 0: // Home - Already there
@@ -382,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Get current user name
     final User? currentUser = FirebaseAuth.instance.currentUser;
     final String? userEmail = currentUser?.email;
-    
+
     return Scaffold(
       backgroundColor: Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -409,61 +405,77 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           // Child dropdown selector
           _isLoading
-              ? Container(width: 40, height: 40, padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2))
+              ? Container(
+                width: 40,
+                height: 40,
+                padding: EdgeInsets.all(10),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
               : _children.isEmpty
-                  ? TextButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BabyDetailsScreen(),
-                          ),
-                        );
-                      },
-                      icon: Icon(Icons.add, size: 18),
-                      label: Text('Add Baby'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Color(0xFF1873EA),
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Color(0xFF1873EA).withOpacity(0.3)),
-                        ),
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        margin: EdgeInsets.only(right: 8),
-                        child: DropdownButton<String>(
-                          value: _selectedChildId,
-                          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF1873EA)),
-                          elevation: 16,
-                          style: TextStyle(color: Color(0xFF1873EA), fontWeight: FontWeight.w600),
-                          underline: Container(height: 0),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedChildId = newValue;
-                              if (_selectedChildId != null) {
-                                _selectedChild = _children.firstWhere(
-                                  (child) => child.id == _selectedChildId,
-                                  orElse: () => _children.first,
-                                );
-                              }
-                            });
-                          },
-                          items: _children.map<DropdownMenuItem<String>>((Child child) {
-                            // Show name and birth year
-                            String displayText = '${child.name} (${child.dateOfBirth.year})';
-                            
-                            return DropdownMenuItem<String>(
-                              value: child.id,
-                              child: Text(displayText, style: TextStyle(fontSize: 14)),
-                            );
-                          }).toList(),
-                        ),
-                      ),
+              ? TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BabyDetailsScreen(),
                     ),
+                  );
+                },
+                icon: Icon(Icons.add, size: 18),
+                label: Text('Add Baby'),
+                style: TextButton.styleFrom(foregroundColor: Color(0xFF1873EA)),
+              )
+              : Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Color(0xFF1873EA).withOpacity(0.3),
+                    ),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  margin: EdgeInsets.only(right: 8),
+                  child: DropdownButton<String>(
+                    value: _selectedChildId,
+                    icon: const Icon(
+                      Icons.arrow_drop_down,
+                      color: Color(0xFF1873EA),
+                    ),
+                    elevation: 16,
+                    style: TextStyle(
+                      color: Color(0xFF1873EA),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    underline: Container(height: 0),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedChildId = newValue;
+                        if (_selectedChildId != null) {
+                          _selectedChild = _children.firstWhere(
+                            (child) => child.id == _selectedChildId,
+                            orElse: () => _children.first,
+                          );
+                        }
+                      });
+                    },
+                    items:
+                        _children.map<DropdownMenuItem<String>>((Child child) {
+                          // Show name and birth year
+                          String displayText =
+                              '${child.name} (${child.dateOfBirth.year})';
+
+                          return DropdownMenuItem<String>(
+                            value: child.id,
+                            child: Text(
+                              displayText,
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          );
+                        }).toList(),
+                  ),
+                ),
+              ),
           // User profile with dropdown menu
           Padding(
             padding: EdgeInsets.only(right: 16.0),
@@ -474,80 +486,97 @@ class _HomeScreenState extends State<HomeScreen> {
                   _logout();
                 } else if (value == 'profile') {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Profile functionality coming soon!')),
+                    SnackBar(
+                      content: Text('Profile functionality coming soon!'),
+                    ),
                   );
                 } else if (value == 'settings') {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Settings functionality coming soon!')),
+                    SnackBar(
+                      content: Text('Settings functionality coming soon!'),
+                    ),
                   );
                 }
               },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                PopupMenuItem<String>(
-                  value: 'account',
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 15,
-                        backgroundColor: Color(0xFF1873EA).withOpacity(0.2),
-                        child: Icon(Icons.person, color: Color(0xFF1873EA), size: 18),
-                      ),
-                      SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              itemBuilder:
+                  (BuildContext context) => <PopupMenuEntry<String>>[
+                    PopupMenuItem<String>(
+                      value: 'account',
+                      child: Row(
                         children: [
-                          Text(
-                            'Account',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                          CircleAvatar(
+                            radius: 15,
+                            backgroundColor: Color(0xFF1873EA).withOpacity(0.2),
+                            child: Icon(
+                              Icons.person,
+                              color: Color(0xFF1873EA),
+                              size: 18,
                             ),
                           ),
-                          Text(
-                            userEmail ?? 'Unknown',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
+                          SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Account',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                userEmail ?? 'Unknown',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const PopupMenuDivider(),
-                PopupMenuItem<String>(
-                  value: 'profile',
-                  child: Row(
-                    children: [
-                      Icon(Icons.account_circle, color: Color(0xFF1873EA), size: 20),
-                      SizedBox(width: 10),
-                      Text('Profile'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'settings',
-                  child: Row(
-                    children: [
-                      Icon(Icons.settings, color: Color(0xFF1873EA), size: 20),
-                      SizedBox(width: 10),
-                      Text('Settings'),
-                    ],
-                  ),
-                ),
-                const PopupMenuDivider(),
-                PopupMenuItem<String>(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, color: Colors.red, size: 20),
-                      SizedBox(width: 10),
-                      Text('Logout', style: TextStyle(color: Colors.red)),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+                    const PopupMenuDivider(),
+                    PopupMenuItem<String>(
+                      value: 'profile',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.account_circle,
+                            color: Color(0xFF1873EA),
+                            size: 20,
+                          ),
+                          SizedBox(width: 10),
+                          Text('Profile'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'settings',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.settings,
+                            color: Color(0xFF1873EA),
+                            size: 20,
+                          ),
+                          SizedBox(width: 10),
+                          Text('Settings'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    PopupMenuItem<String>(
+                      value: 'logout',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout, color: Colors.red, size: 20),
+                          SizedBox(width: 10),
+                          Text('Logout', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
               child: CircleAvatar(
                 radius: 18,
                 backgroundColor: Color(0xFF1873EA),
@@ -557,13 +586,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _children.isEmpty
+      body:
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : _children.isEmpty
               ? _buildNoChildrenView()
               : _selectedChild == null
-                  ? Center(child: Text('Please select a child'))
-                  : _buildHomeContentForChild(_selectedChild!),
+              ? Center(child: Text('Please select a child'))
+              : _buildHomeContentForChild(_selectedChild!),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -572,7 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
               blurRadius: 20,
               offset: Offset(0, -2),
               spreadRadius: 0,
-            )
+            ),
           ],
         ),
         child: BottomNavigationBar(
@@ -582,10 +612,7 @@ class _HomeScreenState extends State<HomeScreen> {
               activeIcon: Icon(Icons.home),
               label: 'Home',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: 'Search',
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
             BottomNavigationBarItem(
               icon: Icon(Icons.favorite_border),
               activeIcon: Icon(Icons.favorite),
@@ -614,7 +641,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Calculate the current week
     final currentWeek = calculateWeeksSinceBirth(child.dateOfBirth);
     final weeks = generateWeeks();
-    
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -623,7 +650,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1873EA).withOpacity(0.9), Color(0xFF1873EA).withOpacity(0.7)],
+                colors: [
+                  Color(0xFF1873EA).withOpacity(0.9),
+                  Color(0xFF1873EA).withOpacity(0.7),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -662,9 +692,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          
+
           SizedBox(height: 24),
-          
+
           // Week scroller
           Container(
             height: 85,
@@ -683,9 +713,9 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
-          
+
           SizedBox(height: 24),
-          
+
           // Baby info card
           Container(
             padding: const EdgeInsets.all(20),
@@ -715,17 +745,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(45),
                         child: Image.asset(
-                          child.gender == 'boy' 
-                            ? 'assets/images/baby.png' 
-                            : 'assets/images/baby.png',
+                          child.gender == 'boy'
+                              ? 'assets/images/baby.png'
+                              : 'assets/images/baby.png',
                           width: 150,
                           height: 150,
                           fit: BoxFit.cover,
-                          errorBuilder: (ctx, obj, stack) => Icon(
-                            Icons.child_care,
-                            size: 50,
-                            color: Color(0xFF1873EA),
-                          ),
+                          errorBuilder:
+                              (ctx, obj, stack) => Icon(
+                                Icons.child_care,
+                                size: 50,
+                                color: Color(0xFF1873EA),
+                              ),
                         ),
                       ),
                     ),
@@ -764,9 +795,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                
+
                 SizedBox(height: 24),
-                
+
                 // Stats row
                 Row(
                   children: [
@@ -787,21 +818,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: _buildBabyStatItem(
                         'Gender',
-                        child.gender.substring(0, 1).toUpperCase() + child.gender.substring(1),
+                        child.gender.substring(0, 1).toUpperCase() +
+                            child.gender.substring(1),
                       ),
                     ),
                   ],
                 ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Growth milestone link
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => GrowthMilestonePage(childId: child.id),
+                        builder:
+                            (context) => GrowthMilestonePage(childId: child.id),
                       ),
                     );
                   },
@@ -838,9 +871,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          
+
           SizedBox(height: 24),
-          
+
           // Features grid
           Text(
             "Baby Care Options",
@@ -850,9 +883,9 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Color(0xFF333333),
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -872,7 +905,7 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          
+
           SizedBox(height: 24),
         ],
       ),
