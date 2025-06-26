@@ -3209,36 +3209,42 @@ class _GrowthMilestonePageState extends State<GrowthMilestonePage> {
                                           ...(_createCurvedRegionSlices(
                                             'minus2SD',
                                             'minus3SD',
-                                            Colors.yellow.withOpacity(0.3),
+                                            Colors.yellow.withOpacity(0.4),
                                           )),
 
                                           // Region 3: -2SD to -1SD (Danger to Underweight) - LIGHT GREEN
                                           ...(_createCurvedRegionSlices(
                                             'minus1SD',
                                             'minus2SD',
-                                            Colors.lightGreen.withOpacity(0.3),
+                                            const Color.fromARGB(
+                                              255,
+                                              141,
+                                              190,
+                                              85,
+                                            ).withOpacity(0.3),
                                           )),
 
-                                          // Region 4: -1SD to +1SD (Healthy Weight) - GREEN
-                                          ...(_createCurvedRegionSlices(
-                                            'plus1SD',
-                                            'minus1SD',
-                                            Colors.green.withOpacity(0.3),
-                                          )),
-
-                                          // Region 5: +1SD to +2SD (Overweight) - LIGHT PURPLE
+                                          // Region 4: -1SD to +2SD (Healthy Weight) - GREEN
                                           ...(_createCurvedRegionSlices(
                                             'plus2SD',
-                                            'plus1SD',
+                                            'minus1SD',
+                                            Colors.green.withOpacity(0.4),
+                                          )),
+
+                                          // Region 6: Above +2SD (Severely Overweight) - LIGHT PURPLE
+                                          ...(_createCurvedRegionSlices(
+                                            'plus3SD', // You'll need to create this artificial boundary
+                                            'plus2SD',
                                             Colors.purple.shade200.withOpacity(
                                               0.4,
                                             ),
                                           )),
 
-                                          // Region 6: Above +2SD (Severely Overweight) - PURPLE
+                                          // Region 7: Above +3SD (Severely Overweight) - PURPLE
                                           ...(_createCurvedRegionSlices(
-                                            'topBoundary', // You'll need to create this artificial boundary
-                                            'plus2SD',
+                                            // You'll need to create this artificial boundary
+                                            'topBoundary',
+                                            'plus3SD',
                                             Colors.purple.withOpacity(0.4),
                                           )),
 
